@@ -210,11 +210,8 @@ mod tests {
             Ok(entry) => entry,
             Err(_) => return,
         };
-        let fixture = TestFixture::new(&[
-            FixtureEntry::file("report.txt", b"hello"),
-            symlink,
-        ])
-        .expect("fixture should be created");
+        let fixture = TestFixture::new(&[FixtureEntry::file("report.txt", b"hello"), symlink])
+            .expect("fixture should be created");
 
         let metadata = std::fs::symlink_metadata(fixture.path("aliases/report.txt"))
             .expect("symlink metadata should exist");
