@@ -5,3 +5,9 @@ edition = "2024"
 
 [lib]
 path = "src/lib.rs"
+
+[dev-dependencies]
+tidyup-testkit = { path = "../tidyup-testkit" }
+
+[lints]
+workspace = true

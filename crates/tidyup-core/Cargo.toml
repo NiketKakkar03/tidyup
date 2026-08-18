@@ -6,6 +6,9 @@ edition = "2024"
 [lib]
 path = "src/lib.rs"
 
+[dependencies]
+tidyup-platform = { path = "../tidyup-platform" }
+
 [dev-dependencies]
 tidyup-testkit = { path = "../tidyup-testkit" }
 

@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::UNIX_EPOCH;
+use tidyup_platform::move_file_within_root;
 
 static PLAN_COUNTER: AtomicU64 = AtomicU64::new(1);
 static OPERATION_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -663,6 +664,112 @@ pub fn validate_plan(root: &Path, plan: &Plan) -> ValidationReport {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ExecutionReport {
+    pub operation_id: OperationId,
+    pub results: Vec<ActionExecutionResult>,
+}
+
+impl ExecutionReport {
+    #[must_use]
+    pub fn completed_count(&self) -> usize {
+        self.results
+            .iter()
+            .filter(|result| matches!(result.status, ActionExecutionStatus::Completed))
+            .count()
+    }
+
+    #[must_use]
+    pub fn skipped_count(&self) -> usize {
+        self.results
+            .iter()
+            .filter(|result| matches!(result.status, ActionExecutionStatus::Skipped { .. }))
+            .count()
+    }
+
+    #[must_use]
+    pub fn failed_count(&self) -> usize {
+        self.results
+            .iter()
+            .filter(|result| matches!(result.status, ActionExecutionStatus::Failed { .. }))
+            .count()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ActionExecutionResult {
+    pub action_id: ActionId,
+    pub source_relative_path: PathBuf,
+    pub destination_relative_path: PathBuf,
+    pub status: ActionExecutionStatus,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ActionExecutionStatus {
+    Completed,
+    Skipped {
+        reason_code: ValidationReasonCode,
+        detail: String,
+    },
+    Failed {
+        detail: String,
+    },
+}
+
+pub fn execute_plan(root: &Path, plan: &Plan) -> ExecutionReport {
+    let mut results = Vec::with_capacity(plan.moves.len());
+
+    for planned_move in &plan.moves {
+        let single_action_plan = Plan {
+            schema_version: plan.schema_version.clone(),
+            plan_id: plan.plan_id.clone(),
+            operation_id: plan.operation_id.clone(),
+            root: plan.root.clone(),
+            moves: vec![planned_move.clone()],
+            skipped_files: Vec::new(),
+        };
+        let validation = validate_plan(root, &single_action_plan);
+        if let Some(invalid) = validation.invalid_actions.into_iter().next() {
+            results.push(ActionExecutionResult {
+                action_id: planned_move.action_id.clone(),
+                source_relative_path: planned_move.source.relative_path.clone(),
+                destination_relative_path: planned_move.destination_relative_path.clone(),
+                status: ActionExecutionStatus::Skipped {
+                    reason_code: invalid.reason_code,
+                    detail: invalid.detail,
+                },
+            });
+            continue;
+        }
+
+        match move_file_within_root(
+            root,
+            &planned_move.source.relative_path,
+            &planned_move.destination_relative_path,
+        ) {
+            Ok(()) => results.push(ActionExecutionResult {
+                action_id: planned_move.action_id.clone(),
+                source_relative_path: planned_move.source.relative_path.clone(),
+                destination_relative_path: planned_move.destination_relative_path.clone(),
+                status: ActionExecutionStatus::Completed,
+            }),
+            Err(error) => results.push(ActionExecutionResult {
+                action_id: planned_move.action_id.clone(),
+                source_relative_path: planned_move.source.relative_path.clone(),
+                destination_relative_path: planned_move.destination_relative_path.clone(),
+                status: ActionExecutionStatus::Failed {
+                    detail: error.to_string(),
+                },
+            }),
+        }
+    }
+
+    ExecutionReport {
+        operation_id: plan.operation_id.clone(),
+        results,
+    }
+}
+
 #[must_use]
 pub fn render_scan_json(scan: &ScanReport) -> String {
     let scanned_files = scan
@@ -794,9 +901,10 @@ fn json_option_u64(value: Option<u64>) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        ExtensionRule, FileSnapshot, PlanSkipReason, RulePackV1, RulePackValidationError,
-        ScanSkipReason, build_plan, classify_snapshot, render_plan_json, render_scan_json,
-        scan_root, validate_plan,
+        ActionExecutionStatus, ExtensionRule, FileSnapshot, PlanSkipReason, RulePackV1,
+        RulePackValidationError, ScanSkipReason, ValidationReasonCode, build_plan,
+        classify_snapshot, execute_plan, render_plan_json, render_scan_json, scan_root,
+        validate_plan,
     };
     use std::fs;
     use tidyup_testkit::{FixtureEntry, TestFixture, try_create_symlink_fixture};
@@ -967,5 +1075,40 @@ mod tests {
         let second = classify_snapshot(&snapshot, &RulePackV1::built_in());
 
         assert_eq!(first, second);
+    }
+
+    #[test]
+    fn execution_reports_completed_and_skipped_actions_separately() {
+        let fixture = TestFixture::new(&[
+            FixtureEntry::file("todo.md", b"todo"),
+            FixtureEntry::file("photo.jpg", b"jpg"),
+        ])
+        .expect("fixture should exist");
+
+        let scan = scan_root(fixture.root()).expect("scan should succeed");
+        let plan = build_plan(&scan, &RulePackV1::built_in()).expect("plan should build");
+        fs::create_dir_all(fixture.path("Images")).expect("images dir should exist");
+        fs::write(fixture.path("Images/photo.jpg"), b"occupied").expect("destination should exist");
+
+        let report = execute_plan(fixture.root(), &plan);
+
+        assert_eq!(report.completed_count(), 1);
+        assert_eq!(report.skipped_count(), 1);
+        assert_eq!(report.failed_count(), 0);
+        assert!(
+            report
+                .results
+                .iter()
+                .any(|result| matches!(result.status, ActionExecutionStatus::Completed))
+        );
+        assert!(report.results.iter().any(|result| matches!(
+            result.status,
+            ActionExecutionStatus::Skipped {
+                reason_code: ValidationReasonCode::DestinationExists,
+                ..
+            }
+        )));
+        assert!(fixture.path("Documents/todo.md").exists());
+        assert!(fixture.path("Images/photo.jpg").exists());
     }
 }
