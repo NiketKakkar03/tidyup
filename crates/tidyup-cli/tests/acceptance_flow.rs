@@ -81,6 +81,78 @@ fn plan_json_contains_validation_and_reason_codes() {
     assert!(output.contains("\"reason_code\":\"destination_exists\""));
 }
 
+#[test]
+fn apply_preview_requires_explicit_confirmation() {
+    let fixture = sample_root_fixture();
+    let output = run_tidyup([
+        "apply",
+        "--root",
+        fixture
+            .root()
+            .to_str()
+            .expect("fixture path should be utf-8"),
+    ]);
+
+    assert!(output.contains("No files were changed yet."));
+    assert!(output.contains("rerun with --yes"));
+    assert!(fixture.path("todo.md").exists());
+}
+
+#[test]
+fn apply_command_moves_files_and_records_history() {
+    let fixture = TestFixture::new(&[
+        FixtureEntry::file("todo.md", b"task list"),
+        FixtureEntry::file("photo.jpg", b"jpeg"),
+    ])
+    .expect("fixture should be created");
+
+    let output = run_tidyup([
+        "apply",
+        "--root",
+        fixture
+            .root()
+            .to_str()
+            .expect("fixture path should be utf-8"),
+        "--yes",
+    ]);
+
+    assert!(output.contains("Completed moves: 2"));
+    assert!(output.contains("History database:"));
+    assert!(!fixture.path("todo.md").exists());
+    assert!(fixture.path("Documents/todo.md").exists());
+    assert!(fixture.path("Images/photo.jpg").exists());
+
+    let history = run_tidyup([
+        "history",
+        "--root",
+        fixture
+            .root()
+            .to_str()
+            .expect("fixture path should be utf-8"),
+    ]);
+    assert!(history.contains("Recorded operations: 1"));
+}
+
+#[test]
+fn apply_command_reports_safety_conflicts_from_existing_destinations() {
+    let fixture = sample_root_fixture();
+    let output = run_tidyup([
+        "apply",
+        "--root",
+        fixture
+            .root()
+            .to_str()
+            .expect("fixture path should be utf-8"),
+        "--yes",
+    ]);
+
+    assert!(output.contains("Completed moves: 1"));
+    assert!(output.contains("Planning skips: 1"));
+    assert!(output.contains("[destination_exists]"));
+    assert!(fixture.path("Documents/todo.md").exists());
+    assert!(fixture.path("Documents/Quarterly Notes.txt").exists());
+}
+
 fn run_tidyup<const N: usize>(args: [&str; N]) -> String {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_tidyup"))
         .args(args)

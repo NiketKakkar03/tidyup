@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 tidyup-core = { path = "../tidyup-core" }
+tidyup-storage = { path = "../tidyup-storage" }
 
 [[bin]]
 name = "tidyup"

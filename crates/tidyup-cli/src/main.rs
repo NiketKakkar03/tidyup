@@ -2,8 +2,10 @@ use std::env;
 use std::path::PathBuf;
 
 use tidyup_core::{
-    RulePackV1, build_plan, render_plan_json, render_scan_json, scan_root, validate_plan,
+    ActionExecutionStatus, ExecutionReport, Plan, RulePackV1, ValidationReport, build_plan,
+    execute_plan, render_plan_json, render_scan_json, scan_root, validate_plan,
 };
+use tidyup_storage::{default_history_db_path, load_operations, persist_execution};
 
 fn main() {
     match run(env::args().skip(1).collect()) {
@@ -24,12 +26,20 @@ fn run(args: Vec<String>) -> Result<String, String> {
 
     match command {
         "scan" => {
-            let options = CommandOptions::parse(&args[1..])?;
+            let options = ReadOnlyCommandOptions::parse(&args[1..])?;
             run_scan(options)
         }
         "plan" => {
-            let options = CommandOptions::parse(&args[1..])?;
+            let options = ReadOnlyCommandOptions::parse(&args[1..])?;
             run_plan(options)
+        }
+        "apply" => {
+            let options = ApplyCommandOptions::parse(&args[1..])?;
+            run_apply(options)
+        }
+        "history" => {
+            let options = HistoryCommandOptions::parse(&args[1..])?;
+            run_history(options)
         }
         "--help" | "-h" | "help" => Ok(usage()),
         _ => Err(format!("unknown command: {command}\n\n{}", usage())),
@@ -42,15 +52,64 @@ enum OutputFormat {
     Json,
 }
 
-struct CommandOptions {
+struct ReadOnlyCommandOptions {
     root: PathBuf,
     format: OutputFormat,
 }
 
-impl CommandOptions {
+impl ReadOnlyCommandOptions {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let parsed = ParsedCommonArgs::parse(args)?;
+        Ok(Self {
+            root: parsed.root,
+            format: parsed.format,
+        })
+    }
+}
+
+struct ApplyCommandOptions {
+    root: PathBuf,
+    format: OutputFormat,
+    approve: bool,
+}
+
+impl ApplyCommandOptions {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let parsed = ParsedCommonArgs::parse(args)?;
+        Ok(Self {
+            root: parsed.root,
+            format: parsed.format,
+            approve: parsed.approve,
+        })
+    }
+}
+
+struct HistoryCommandOptions {
+    root: PathBuf,
+    format: OutputFormat,
+}
+
+impl HistoryCommandOptions {
+    fn parse(args: &[String]) -> Result<Self, String> {
+        let parsed = ParsedCommonArgs::parse(args)?;
+        Ok(Self {
+            root: parsed.root,
+            format: parsed.format,
+        })
+    }
+}
+
+struct ParsedCommonArgs {
+    root: PathBuf,
+    format: OutputFormat,
+    approve: bool,
+}
+
+impl ParsedCommonArgs {
     fn parse(args: &[String]) -> Result<Self, String> {
         let mut root = None;
         let mut format = OutputFormat::Human;
+        let mut approve = false;
         let mut index = 0;
 
         while index < args.len() {
@@ -73,6 +132,10 @@ impl CommandOptions {
                     };
                     index += 2;
                 }
+                "--yes" => {
+                    approve = true;
+                    index += 1;
+                }
                 "--help" | "-h" => return Err(usage()),
                 other => return Err(format!("unexpected argument: {other}\n\n{}", usage())),
             }
@@ -80,11 +143,15 @@ impl CommandOptions {
 
         let root =
             root.ok_or_else(|| format!("missing required --root argument\n\n{}", usage()))?;
-        Ok(Self { root, format })
+        Ok(Self {
+            root,
+            format,
+            approve,
+        })
     }
 }
 
-fn run_scan(options: CommandOptions) -> Result<String, String> {
+fn run_scan(options: ReadOnlyCommandOptions) -> Result<String, String> {
     let scan = scan_root(&options.root).map_err(|error| error.to_string())?;
 
     Ok(match options.format {
@@ -93,14 +160,50 @@ fn run_scan(options: CommandOptions) -> Result<String, String> {
     })
 }
 
-fn run_plan(options: CommandOptions) -> Result<String, String> {
+fn run_plan(options: ReadOnlyCommandOptions) -> Result<String, String> {
     let scan = scan_root(&options.root).map_err(|error| error.to_string())?;
     let plan = build_plan(&scan, &RulePackV1::built_in()).map_err(|error| error.to_string())?;
     let validation = validate_plan(&options.root, &plan);
 
     Ok(match options.format {
-        OutputFormat::Human => render_plan_human(&scan, &plan, &validation),
+        OutputFormat::Human => render_plan_human(&scan.root, &plan, &validation),
         OutputFormat::Json => render_plan_json(&plan, &validation),
+    })
+}
+
+fn run_apply(options: ApplyCommandOptions) -> Result<String, String> {
+    let scan = scan_root(&options.root).map_err(|error| error.to_string())?;
+    let plan = build_plan(&scan, &RulePackV1::built_in()).map_err(|error| error.to_string())?;
+    let validation = validate_plan(&options.root, &plan);
+
+    if !options.approve {
+        return Ok(match options.format {
+            OutputFormat::Human => render_apply_preview_human(&options.root, &plan, &validation),
+            OutputFormat::Json => render_apply_preview_json(&plan, &validation),
+        });
+    }
+
+    let execution = execute_plan(&options.root, &plan);
+    let history_db_path = default_history_db_path(&options.root);
+    persist_execution(&history_db_path, &plan, &execution).map_err(|error| error.to_string())?;
+
+    Ok(match options.format {
+        OutputFormat::Human => {
+            render_apply_result_human(&history_db_path, &plan, &validation, &execution)
+        }
+        OutputFormat::Json => {
+            render_apply_result_json(&history_db_path, &plan, &validation, &execution)
+        }
+    })
+}
+
+fn run_history(options: HistoryCommandOptions) -> Result<String, String> {
+    let history_db_path = default_history_db_path(&options.root);
+    let operations = load_operations(&history_db_path).map_err(|error| error.to_string())?;
+
+    Ok(match options.format {
+        OutputFormat::Human => render_history_human(&history_db_path, &operations),
+        OutputFormat::Json => render_history_json(&history_db_path, &operations),
     })
 }
 
@@ -138,13 +241,9 @@ fn render_scan_human(scan: &tidyup_core::ScanReport) -> String {
     lines.join("\n")
 }
 
-fn render_plan_human(
-    scan: &tidyup_core::ScanReport,
-    plan: &tidyup_core::Plan,
-    validation: &tidyup_core::ValidationReport,
-) -> String {
+fn render_plan_human(root: &std::path::Path, plan: &Plan, validation: &ValidationReport) -> String {
     let mut lines = vec![
-        format!("Planned root: {}", scan.root.display()),
+        format!("Planned root: {}", root.display()),
         "Read-only plan complete. No files were changed.".to_owned(),
         format!("Plan id: {}", plan.plan_id.as_str()),
         format!("Operation id: {}", plan.operation_id.as_str()),
@@ -199,15 +298,250 @@ fn render_plan_human(
     lines.join("\n")
 }
 
+fn render_apply_preview_human(
+    root: &std::path::Path,
+    plan: &Plan,
+    validation: &ValidationReport,
+) -> String {
+    let mut lines = vec![
+        format!("Apply preview for root: {}", root.display()),
+        "No files were changed yet.".to_owned(),
+        format!("Ready to move: {}", validation.valid_actions.len()),
+        format!("Planning skips: {}", plan.skipped_files.len()),
+        format!(
+            "Validation rejections: {}",
+            validation.invalid_actions.len()
+        ),
+        "Review the proposed moves below, then rerun with --yes to apply them.".to_owned(),
+    ];
+    if !plan.moves.is_empty() {
+        lines.push("Proposed moves:".to_owned());
+        for planned_move in &plan.moves {
+            lines.push(format!(
+                "- {} -> {} [{}]",
+                planned_move.source.relative_path.display(),
+                planned_move.destination_relative_path.display(),
+                planned_move.rule_id
+            ));
+        }
+    }
+    if !plan.skipped_files.is_empty() {
+        lines.push("Safety skips:".to_owned());
+        for skip in &plan.skipped_files {
+            lines.push(format!(
+                "- {} [{}] {}",
+                skip.source_relative_path.display(),
+                skip.reason_code.code(),
+                skip.detail
+            ));
+        }
+    }
+    lines.join("\n")
+}
+
+fn render_apply_result_human(
+    history_db_path: &std::path::Path,
+    plan: &Plan,
+    validation: &ValidationReport,
+    execution: &ExecutionReport,
+) -> String {
+    let mut lines = vec![
+        format!("Applied root: {}", plan.root.display()),
+        format!("Operation id: {}", plan.operation_id.as_str()),
+        format!("Plan id: {}", plan.plan_id.as_str()),
+        format!("Completed moves: {}", execution.completed_count()),
+        format!("Skipped actions: {}", execution.skipped_count()),
+        format!("Failed actions: {}", execution.failed_count()),
+        format!("Planning skips: {}", plan.skipped_files.len()),
+        format!("History database: {}", history_db_path.display()),
+    ];
+    if !validation.invalid_actions.is_empty() {
+        lines.push(format!(
+            "Validation rejections before execution: {}",
+            validation.invalid_actions.len()
+        ));
+    }
+    if !execution.results.is_empty() {
+        lines.push("Apply results:".to_owned());
+        for result in &execution.results {
+            let status_text = match &result.status {
+                ActionExecutionStatus::Completed => "completed".to_owned(),
+                ActionExecutionStatus::Skipped {
+                    reason_code,
+                    detail,
+                } => {
+                    format!("skipped [{}] {}", reason_code.code(), detail)
+                }
+                ActionExecutionStatus::Failed { detail } => {
+                    format!("failed {}", detail)
+                }
+            };
+            lines.push(format!(
+                "- {} -> {} ({})",
+                result.source_relative_path.display(),
+                result.destination_relative_path.display(),
+                status_text
+            ));
+        }
+    }
+    if !plan.skipped_files.is_empty() {
+        lines.push("Planning skips:".to_owned());
+        for skip in &plan.skipped_files {
+            lines.push(format!(
+                "- {} [{}] {}",
+                skip.source_relative_path.display(),
+                skip.reason_code.code(),
+                skip.detail
+            ));
+        }
+    }
+    lines.join("\n")
+}
+
+fn render_history_human(
+    history_db_path: &std::path::Path,
+    operations: &[tidyup_storage::OperationRecord],
+) -> String {
+    let mut lines = vec![
+        format!("History database: {}", history_db_path.display()),
+        format!("Recorded operations: {}", operations.len()),
+    ];
+    for operation in operations {
+        lines.push(format!(
+            "- {} completed={} skipped={} failed={}",
+            operation.operation_id,
+            operation.completed_count,
+            operation.skipped_count,
+            operation.failed_count
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_history_json(
+    history_db_path: &std::path::Path,
+    operations: &[tidyup_storage::OperationRecord],
+) -> String {
+    let items = operations
+        .iter()
+        .map(|operation| {
+            format!(
+                "{{\"operation_id\":{},\"plan_id\":{},\"root_path\":{},\"completed_count\":{},\"skipped_count\":{},\"failed_count\":{},\"applied_at_unix_seconds\":{}}}",
+                json_string(&operation.operation_id),
+                json_string(&operation.plan_id),
+                json_string(&operation.root_path.to_string_lossy()),
+                operation.completed_count,
+                operation.skipped_count,
+                operation.failed_count,
+                operation.applied_at_unix_seconds
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{{\"history_db_path\":{},\"operations\":[{}]}}",
+        json_string(&history_db_path.to_string_lossy()),
+        items
+    )
+}
+
+fn render_apply_preview_json(plan: &Plan, validation: &ValidationReport) -> String {
+    format!(
+        "{{\"approved\":false,\"message\":{},\"plan\":{}}}",
+        json_string("rerun with --yes to apply this plan"),
+        render_plan_json(plan, validation)
+    )
+}
+
+fn render_apply_result_json(
+    history_db_path: &std::path::Path,
+    plan: &Plan,
+    validation: &ValidationReport,
+    execution: &ExecutionReport,
+) -> String {
+    let results = execution
+        .results
+        .iter()
+        .map(|result| {
+            let (status_code, reason_code, detail) = match &result.status {
+                ActionExecutionStatus::Completed => ("completed", None, None),
+                ActionExecutionStatus::Skipped { reason_code, detail } => {
+                    ("skipped", Some(reason_code.code()), Some(detail.as_str()))
+                }
+                ActionExecutionStatus::Failed { detail } => ("failed", None, Some(detail.as_str())),
+            };
+            format!(
+                "{{\"action_id\":{},\"source_relative_path\":{},\"destination_relative_path\":{},\"status_code\":{},\"reason_code\":{},\"detail\":{}}}",
+                json_string(result.action_id.as_str()),
+                json_string(&result.source_relative_path.to_string_lossy()),
+                json_string(&result.destination_relative_path.to_string_lossy()),
+                json_string(status_code),
+                json_option_string(reason_code),
+                json_option_string(detail)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{{\"approved\":true,\"history_db_path\":{},\"operation_id\":{},\"plan_id\":{},\"completed_count\":{},\"skipped_count\":{},\"failed_count\":{},\"planning_skip_count\":{},\"validation\":{},\"results\":[{}]}}",
+        json_string(&history_db_path.to_string_lossy()),
+        json_string(plan.operation_id.as_str()),
+        json_string(plan.plan_id.as_str()),
+        execution.completed_count(),
+        execution.skipped_count(),
+        execution.failed_count(),
+        plan.skipped_files.len(),
+        render_validation_json(validation),
+        results
+    )
+}
+
+fn render_validation_json(validation: &ValidationReport) -> String {
+    let invalid = validation
+        .invalid_actions
+        .iter()
+        .map(|action| {
+            format!(
+                "{{\"action_id\":{},\"source_relative_path\":{},\"reason_code\":{},\"detail\":{}}}",
+                json_string(action.action_id.as_str()),
+                json_string(&action.source_relative_path.to_string_lossy()),
+                json_string(action.reason_code.code()),
+                json_string(&action.detail)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{{\"valid_action_count\":{},\"invalid_actions\":[{}]}}",
+        validation.valid_actions.len(),
+        invalid
+    )
+}
+
 fn usage() -> String {
     [
         "Usage:",
         "  tidyup scan --root <path> [--format human|json]",
         "  tidyup plan --root <path> [--format human|json]",
+        "  tidyup apply --root <path> [--yes] [--format human|json]",
+        "  tidyup history --root <path> [--format human|json]",
         "",
-        "Both commands are read-only in this MVP stage.",
+        "`scan` and `plan` are read-only.",
+        "`apply` previews by default and only changes files when you add --yes.",
     ]
     .join("\n")
+}
+
+fn json_string(value: &str) -> String {
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('\"', "\\\"")
+        .replace('\n', "\\n");
+    format!("\"{escaped}\"")
+}
+
+fn json_option_string(value: Option<&str>) -> String {
+    value.map_or_else(|| "null".to_owned(), json_string)
 }
 
 #[cfg(test)]
@@ -218,6 +552,7 @@ mod tests {
     fn help_is_returned_without_arguments() {
         let output = run(Vec::new()).expect("usage should render");
         assert!(output.contains("tidyup scan"));
+        assert!(output.contains("tidyup apply"));
     }
 
     #[test]
