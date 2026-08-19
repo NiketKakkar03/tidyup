@@ -86,6 +86,7 @@ struct CommonOptions {
     root: PathBuf,
     format: OutputFormat,
     approve: bool,
+    verbose: bool,
 }
 
 impl CommonOptions {
@@ -93,6 +94,7 @@ impl CommonOptions {
         let mut root = None;
         let mut format = OutputFormat::Human;
         let mut approve = false;
+        let mut verbose = false;
         let mut index = 0;
 
         while index < args.len() {
@@ -119,6 +121,10 @@ impl CommonOptions {
                     approve = true;
                     index += 1;
                 }
+                "--verbose" => {
+                    verbose = true;
+                    index += 1;
+                }
                 "--help" | "-h" => return Err(usage()),
                 other => return Err(format!("unexpected argument: {other}\n\n{}", usage())),
             }
@@ -128,6 +134,7 @@ impl CommonOptions {
             root: root.unwrap_or(env::current_dir().map_err(|error| error.to_string())?),
             format,
             approve,
+            verbose,
         })
     }
 }
@@ -237,7 +244,7 @@ fn run_apply(
             )));
         }
 
-        let preview = render_apply_preview_human(&plan, &validation);
+        let preview = render_apply_preview_human(&plan, &validation, options.common.verbose);
         writeln!(output, "{preview}").map_err(|error| error.to_string())?;
         write!(output, "Apply these moves? [y/N]: ").map_err(|error| error.to_string())?;
         output.flush().map_err(|error| error.to_string())?;
@@ -258,7 +265,12 @@ fn run_apply(
     persist_execution(&history_db_path, &plan, &execution).map_err(|error| error.to_string())?;
 
     let output_text = match options.common.format {
-        OutputFormat::Human => render_apply_result_human(&history_db_path, &plan, &execution),
+        OutputFormat::Human => render_apply_result_human(
+            &history_db_path,
+            &plan,
+            &execution,
+            options.common.verbose,
+        ),
         OutputFormat::Json => render_apply_result_json(&history_db_path, &plan, &execution),
     };
 
@@ -327,7 +339,12 @@ fn run_undo(
             )));
         }
 
-        let preview = render_undo_preview_human(operation, &undo_plan, &validation);
+        let preview = render_undo_preview_human(
+            operation,
+            &undo_plan,
+            &validation,
+            options.common.verbose,
+        );
         writeln!(output, "{preview}").map_err(|error| error.to_string())?;
         write!(output, "Restore these files? [y/N]: ").map_err(|error| error.to_string())?;
         output.flush().map_err(|error| error.to_string())?;
@@ -349,7 +366,13 @@ fn run_undo(
 
     let output_text = match options.common.format {
         OutputFormat::Human => {
-            render_undo_result_human(&history_db_path, operation, &undo_plan, &execution)
+            render_undo_result_human(
+                &history_db_path,
+                operation,
+                &undo_plan,
+                &execution,
+                options.common.verbose,
+            )
         }
         OutputFormat::Json => render_apply_result_json(&history_db_path, &undo_plan, &execution),
     };
@@ -491,7 +514,11 @@ fn render_plan_human(plan: &Plan, validation: &ValidationReport) -> String {
     lines.join("\n")
 }
 
-fn render_apply_preview_human(plan: &Plan, validation: &ValidationReport) -> String {
+fn render_apply_preview_human(
+    plan: &Plan,
+    validation: &ValidationReport,
+    verbose: bool,
+) -> String {
     let mut lines = banner_lines("Apply Preview", &plan.root);
     lines.push(format!(
         "{} file(s) are ready to move now.",
@@ -506,11 +533,12 @@ fn render_apply_preview_human(plan: &Plan, validation: &ValidationReport) -> Str
     if !validation.valid_actions.is_empty() {
         lines.push("Moves you are about to approve:".to_owned());
         for (index, planned_move) in validation.valid_actions.iter().enumerate() {
-            lines.push(format!(
-                "{}. {} -> {}",
+            lines.push(render_move_line(
+                &plan.root,
                 index + 1,
-                planned_move.source.relative_path.display(),
-                planned_move.destination_relative_path.display()
+                &planned_move.source.relative_path,
+                &planned_move.destination_relative_path,
+                verbose,
             ));
         }
     }
@@ -524,6 +552,7 @@ fn render_apply_result_human(
     history_db_path: &Path,
     plan: &Plan,
     execution: &ExecutionReport,
+    verbose: bool,
 ) -> String {
     let mut lines = banner_lines("Apply Result", &plan.root);
     lines.push(format!(
@@ -546,11 +575,12 @@ fn render_apply_result_human(
     lines.push(format!("History saved to: {}", history_db_path.display()));
     lines.push("Apply results:".to_owned());
     for result in &execution.results {
-        lines.push(format!(
-            "- {} -> {} ({})",
-            result.source_relative_path.display(),
-            result.destination_relative_path.display(),
-            human_execution_status(&result.status)
+        lines.push(render_result_line(
+            &plan.root,
+            &result.source_relative_path,
+            &result.destination_relative_path,
+            human_execution_status(&result.status),
+            verbose,
         ));
     }
     if !plan.skipped_files.is_empty() {
@@ -622,6 +652,7 @@ fn render_undo_preview_human(
     operation: &OperationRecord,
     plan: &Plan,
     validation: &ValidationReport,
+    verbose: bool,
 ) -> String {
     let mut lines = banner_lines("Undo Preview", &plan.root);
     lines.push(format!(
@@ -641,11 +672,12 @@ fn render_undo_preview_human(
 
     lines.push("Planned restores:".to_owned());
     for (index, planned_move) in plan.moves.iter().enumerate() {
-        lines.push(format!(
-            "{}. {} -> {}",
+        lines.push(render_move_line(
+            &plan.root,
             index + 1,
-            planned_move.source.relative_path.display(),
-            planned_move.destination_relative_path.display()
+            &planned_move.source.relative_path,
+            &planned_move.destination_relative_path,
+            verbose,
         ));
     }
     if !validation.invalid_actions.is_empty() {
@@ -667,6 +699,7 @@ fn render_undo_result_human(
     operation: &OperationRecord,
     plan: &Plan,
     execution: &ExecutionReport,
+    verbose: bool,
 ) -> String {
     let mut lines = banner_lines("Undo Result", &plan.root);
     lines.push(format!(
@@ -693,14 +726,63 @@ fn render_undo_result_human(
     lines.push(format!("History saved to: {}", history_db_path.display()));
     lines.push("Undo results:".to_owned());
     for result in &execution.results {
-        lines.push(format!(
-            "- {} -> {} ({})",
-            result.source_relative_path.display(),
-            result.destination_relative_path.display(),
-            human_execution_status(&result.status)
+        lines.push(render_result_line(
+            &plan.root,
+            &result.source_relative_path,
+            &result.destination_relative_path,
+            human_execution_status(&result.status),
+            verbose,
         ));
     }
     lines.join("\n")
+}
+
+fn render_move_line(
+    root: &Path,
+    index: usize,
+    source_relative_path: &Path,
+    destination_relative_path: &Path,
+    verbose: bool,
+) -> String {
+    if verbose {
+        format!(
+            "{}. {} -> {}",
+            index,
+            root.join(source_relative_path).display(),
+            root.join(destination_relative_path).display()
+        )
+    } else {
+        format!(
+            "{}. {} -> {}",
+            index,
+            source_relative_path.display(),
+            destination_relative_path.display()
+        )
+    }
+}
+
+fn render_result_line(
+    root: &Path,
+    source_relative_path: &Path,
+    destination_relative_path: &Path,
+    status: String,
+    verbose: bool,
+) -> String {
+    if verbose {
+        format!(
+            "- {} -> {} ({})",
+            root.join(source_relative_path).display(),
+            root.join(destination_relative_path).display(),
+            status
+        )
+    } else {
+        format!(
+            "- {} -> {} ({})",
+            source_relative_path.display(),
+            destination_relative_path.display(),
+            status
+        )
+    }
 }
 
 fn render_history_json(history_db_path: &Path, operations: &[OperationRecord]) -> String {
@@ -771,7 +853,7 @@ fn usage() -> String {
         "Usage:",
         "  tidyup scan [--root <path>] [--format human|json]",
         "  tidyup plan [--root <path>] [--format human|json]",
-        "  tidyup apply [--root <path>] [--yes] [--format human|json]",
+        "  tidyup apply [--root <path>] [--yes] [--verbose] [--format human|json]",
         "  tidyup history [--root <path>] [--format human|json]",
         "  tidyup history show <operation-id> [--root <path>] [--format human|json]",
         "  tidyup undo <operation-id> [--root <path>] [--yes] [--format human|json]",
@@ -779,6 +861,7 @@ fn usage() -> String {
         "If --root is omitted, TidyUp uses the current directory.",
         "`scan` and `plan` are read-only.",
         "`apply` and `undo` ask for confirmation by default and use --yes for non-interactive runs.",
+        "`apply --verbose` and `undo --verbose` show full source and destination paths.",
     ]
     .join("\n")
 }

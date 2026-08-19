@@ -72,6 +72,18 @@ fn apply_preview_requires_explicit_confirmation() {
 }
 
 #[test]
+fn apply_verbose_preview_shows_full_paths() {
+    let fixture = TestFixture::new(&[FixtureEntry::file("todo.md", b"task list")])
+        .expect("fixture should be created");
+
+    let output = run_tidyup_in_root(fixture.root(), ["apply", "--verbose"], Some("n\n"));
+
+    assert!(output.contains(&fixture.path("todo.md").display().to_string()));
+    assert!(output.contains(&fixture.path("Documents/todo.md").display().to_string()));
+    assert!(output.contains("Apply these moves? [y/N]:"));
+}
+
+#[test]
 fn apply_command_moves_files_and_records_history() {
     let fixture = TestFixture::new(&[
         FixtureEntry::file("todo.md", b"task list"),
