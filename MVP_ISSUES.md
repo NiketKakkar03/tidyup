@@ -291,13 +291,13 @@ Allow safe reversal of completed operations without pretending rollback is uncon
 
 **Acceptance checklist**
 
-- [ ] Undo plans are derived only from actions that actually completed.
-- [ ] Undo revalidates current filesystem state before restoration.
-- [ ] Occupied original paths block unsafe restoration.
-- [ ] Changed destination state blocks unsafe restoration.
-- [ ] Undo never overwrites conflicting current data.
-- [ ] Undo results are journaled as first-class operations.
-- [ ] Adversarial undo fixtures cover normal restore and blocked restore cases.
+- [x] Undo plans are derived only from actions that actually completed.
+- [x] Undo revalidates current filesystem state before restoration.
+- [x] Occupied original paths block unsafe restoration.
+- [x] Changed destination state blocks unsafe restoration.
+- [x] Undo never overwrites conflicting current data.
+- [x] Undo results are journaled as first-class operations.
+- [x] Adversarial undo fixtures cover normal restore and blocked restore cases.
 
 **Notes**
 Undo is validation-driven, not forced rollback.
@@ -311,12 +311,12 @@ Complete the user-facing recovery loop for the MVP.
 
 **Acceptance checklist**
 
-- [ ] `tidyup history` lists prior operations clearly.
-- [ ] `tidyup history show` displays enough detail to audit one operation.
-- [ ] `tidyup undo` restores safe actions from a chosen prior operation.
-- [ ] CLI recovery output explains conflicts instead of hiding them.
-- [ ] Exit codes distinguish success, partial success, and blocked undo cases where appropriate.
-- [ ] Acceptance tests cover the full apply-then-undo loop.
+- [x] `tidyup history` lists prior operations clearly.
+- [x] `tidyup history show` displays enough detail to audit one operation.
+- [x] `tidyup undo` restores safe actions from a chosen prior operation.
+- [x] CLI recovery output explains conflicts instead of hiding them.
+- [x] Exit codes distinguish success, partial success, and blocked undo cases where appropriate.
+- [x] Acceptance tests cover the full apply-then-undo loop.
 
 **Notes**
 This completes the user-visible MVP workflow promised in the spec.

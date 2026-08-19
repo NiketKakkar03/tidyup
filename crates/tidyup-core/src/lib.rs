@@ -3,7 +3,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::UNIX_EPOCH;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tidyup_platform::move_file_within_root;
 
 static PLAN_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -19,7 +19,7 @@ impl PlanId {
     #[must_use]
     pub fn new() -> Self {
         let value = PLAN_COUNTER.fetch_add(1, Ordering::Relaxed);
-        Self(format!("plan-{value:08}"))
+        Self(format!("plan-{}-{value:08}", unix_timestamp_nanos()))
     }
 
     #[must_use]
@@ -35,7 +35,7 @@ impl OperationId {
     #[must_use]
     pub fn new() -> Self {
         let value = OPERATION_COUNTER.fetch_add(1, Ordering::Relaxed);
-        Self(format!("op-{value:08}"))
+        Self(format!("op-{}-{value:08}", unix_timestamp_nanos()))
     }
 
     #[must_use]
@@ -48,7 +48,7 @@ impl OperationId {
 pub struct ActionId(String);
 
 impl ActionId {
-    fn new(index: usize) -> Self {
+    pub fn from_index(index: usize) -> Self {
         Self(format!("action-{index:04}"))
     }
 
@@ -528,7 +528,7 @@ pub fn build_plan(scan: &ScanReport, pack: &RulePackV1) -> Result<Plan, RulePack
             continue;
         }
 
-        let action_id = ActionId::new(moves.len() + 1);
+        let action_id = ActionId::from_index(moves.len() + 1);
         moves.push(PlannedMove {
             action_id,
             source: snapshot.clone(),
@@ -896,6 +896,13 @@ fn json_option_string(value: Option<&str>) -> String {
 
 fn json_option_u64(value: Option<u64>) -> String {
     value.map_or_else(|| "null".to_owned(), |number| number.to_string())
+}
+
+fn unix_timestamp_nanos() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos()
 }
 
 #[cfg(test)]
