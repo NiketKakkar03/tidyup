@@ -28,6 +28,42 @@ The release workflow builds:
 - `tidyup-windows.zip`
 - matching `.sha256` checksum files
 
+The workflow definition lives at:
+
+- `.github/workflows/release.yml`
+
+## Downloaded Artifact Usage
+
+macOS:
+
+```bash
+tar -xzf tidyup-macos.tar.gz
+./tidyup scan
+```
+
+Windows PowerShell:
+
+```powershell
+Expand-Archive .\tidyup-windows.zip -DestinationPath .
+.\tidyup.exe scan
+```
+
+## Checksum Verification
+
+macOS:
+
+```bash
+shasum -a 256 -c tidyup-macos.tar.gz.sha256
+```
+
+Windows PowerShell:
+
+```powershell
+$expected = (Get-Content .\tidyup-windows.zip.sha256).Split(' ')[0]
+$actual = (Get-FileHash .\tidyup-windows.zip -Algorithm SHA256).Hash
+$actual.ToLower() -eq $expected.ToLower()
+```
+
 ## Data Location
 
 TidyUp stores operation history inside the selected root:

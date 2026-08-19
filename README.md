@@ -251,3 +251,4 @@ TidyUp is a cautious folder-cleanup tool for people who want preview, audit hist
 - [RELEASE_CHECKLIST.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/RELEASE_CHECKLIST.md)
 - [CHANGELOG.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/CHANGELOG.md)
 - [docs/INSTALLATION.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/INSTALLATION.md)
+- [docs/RELEASE_EVIDENCE_v0.1.0.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/RELEASE_EVIDENCE_v0.1.0.md)
