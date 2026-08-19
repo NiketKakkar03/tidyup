@@ -197,12 +197,12 @@ Expose the read-only engine through usable CLI commands.
 
 **Acceptance checklist**
 
-- [ ] `tidyup scan` is implemented.
-- [ ] `tidyup plan` is implemented.
-- [ ] Human-readable output explains what was scanned, skipped, and proposed.
-- [ ] Stable JSON output exists for read-only commands.
-- [ ] CLI output makes it clear that no files were changed during scan or plan.
-- [ ] Command behavior is covered by acceptance or snapshot-style tests.
+- [x] `tidyup scan` is implemented.
+- [x] `tidyup plan` is implemented.
+- [x] Human-readable output explains what was scanned, skipped, and proposed.
+- [x] Stable JSON output exists for read-only commands.
+- [x] CLI output makes it clear that no files were changed during scan or plan.
+- [x] Command behavior is covered by acceptance or snapshot-style tests.
 
 **Notes**
 This is the end of the first public read-only milestone.
@@ -216,12 +216,12 @@ Add the guarded mutation path while preserving the core safety invariants.
 
 **Acceptance checklist**
 
-- [ ] Every approved action is revalidated immediately before execution.
-- [ ] Same-root file moves are implemented through a dedicated platform-aware primitive.
-- [ ] Cross-volume moves are rejected.
-- [ ] No overwrite path exists during apply.
-- [ ] Changed source and newly occupied destination cases are skipped safely.
-- [ ] Tests prove that stale-source and destination-collision scenarios do not overwrite data.
+- [x] Every approved action is revalidated immediately before execution.
+- [x] Same-root file moves are implemented through a dedicated platform-aware primitive.
+- [x] Cross-volume moves are rejected.
+- [x] No overwrite path exists during apply.
+- [x] Changed source and newly occupied destination cases are skipped safely.
+- [x] Tests prove that stale-source and destination-collision scenarios do not overwrite data.
 
 **Notes**
 This is the most safety-sensitive implementation issue so far.
@@ -235,11 +235,11 @@ Make apply results precise and auditable instead of all-or-nothing.
 
 **Acceptance checklist**
 
-- [ ] The executor returns per-action result records.
-- [ ] Completed, skipped, and failed actions are represented distinctly.
-- [ ] Partial success is never reported as full success.
-- [ ] Result records preserve the reason for skipped or failed actions.
-- [ ] Acceptance tests cover mixed-result operations.
+- [x] The executor returns per-action result records.
+- [x] Completed, skipped, and failed actions are represented distinctly.
+- [x] Partial success is never reported as full success.
+- [x] Result records preserve the reason for skipped or failed actions.
+- [x] Acceptance tests cover mixed-result operations.
 
 **Notes**
 Accurate partial-failure reporting is one of the product principles.
@@ -253,12 +253,12 @@ Persist operation history durably so apply and undo can be audited.
 
 **Acceptance checklist**
 
-- [ ] `tidyup-storage` owns SQLite-backed persistence.
-- [ ] A migration framework exists.
-- [ ] Operation records and per-action results are persisted.
-- [ ] Journal entries are append-oriented and auditable.
-- [ ] History queries can retrieve prior operations needed for CLI display and undo.
-- [ ] Storage tests cover migration startup and basic persistence flows.
+- [x] `tidyup-storage` owns SQLite-backed persistence.
+- [x] A migration framework exists.
+- [x] Operation records and per-action results are persisted.
+- [x] Journal entries are append-oriented and auditable.
+- [x] History queries can retrieve prior operations needed for CLI display and undo.
+- [x] Storage tests cover migration startup and basic persistence flows.
 
 **Notes**
 The journal is a core MVP capability, not a later observability extra.
@@ -272,12 +272,12 @@ Deliver the first end-to-end organizing command that a user can safely review an
 
 **Acceptance checklist**
 
-- [ ] `tidyup apply` is implemented.
-- [ ] The CLI includes approval handling before mutation.
-- [ ] Users can review a summary and proposed moves before execution.
-- [ ] Apply output shows exact counts and reasons for moved, skipped, and failed actions.
-- [ ] Successful apply operations are written to history.
-- [ ] Acceptance tests cover a happy path plus at least one intentional safety conflict.
+- [x] `tidyup apply` is implemented.
+- [x] The CLI includes approval handling before mutation.
+- [x] Users can review a summary and proposed moves before execution.
+- [x] Apply output shows exact counts and reasons for moved, skipped, and failed actions.
+- [x] Successful apply operations are written to history.
+- [x] Acceptance tests cover a happy path plus at least one intentional safety conflict.
 
 **Notes**
 This is the point where the project first fulfills the “organize one folder safely” half of the MVP.

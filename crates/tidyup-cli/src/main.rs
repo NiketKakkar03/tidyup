@@ -1,4 +1,5 @@
 use std::env;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use tidyup_core::{
@@ -20,6 +21,16 @@ fn main() {
 }
 
 fn run(args: Vec<String>) -> Result<String, String> {
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    run_with_prompt(args, &mut stdin.lock(), &mut stdout.lock())
+}
+
+fn run_with_prompt(
+    args: Vec<String>,
+    input: &mut impl io::BufRead,
+    output: &mut impl Write,
+) -> Result<String, String> {
     let Some(command) = args.first().map(String::as_str) else {
         return Ok(usage());
     };
@@ -35,7 +46,7 @@ fn run(args: Vec<String>) -> Result<String, String> {
         }
         "apply" => {
             let options = ApplyCommandOptions::parse(&args[1..])?;
-            run_apply(options)
+            run_apply(options, input, output)
         }
         "history" => {
             let options = HistoryCommandOptions::parse(&args[1..])?;
@@ -141,8 +152,7 @@ impl ParsedCommonArgs {
             }
         }
 
-        let root =
-            root.ok_or_else(|| format!("missing required --root argument\n\n{}", usage()))?;
+        let root = root.unwrap_or(env::current_dir().map_err(|error| error.to_string())?);
         Ok(Self {
             root,
             format,
@@ -171,16 +181,32 @@ fn run_plan(options: ReadOnlyCommandOptions) -> Result<String, String> {
     })
 }
 
-fn run_apply(options: ApplyCommandOptions) -> Result<String, String> {
+fn run_apply(
+    options: ApplyCommandOptions,
+    input: &mut impl io::BufRead,
+    output: &mut impl Write,
+) -> Result<String, String> {
     let scan = scan_root(&options.root).map_err(|error| error.to_string())?;
     let plan = build_plan(&scan, &RulePackV1::built_in()).map_err(|error| error.to_string())?;
     let validation = validate_plan(&options.root, &plan);
 
     if !options.approve {
-        return Ok(match options.format {
-            OutputFormat::Human => render_apply_preview_human(&options.root, &plan, &validation),
-            OutputFormat::Json => render_apply_preview_json(&plan, &validation),
-        });
+        if options.format == OutputFormat::Json {
+            return Ok(render_apply_preview_json(&plan, &validation));
+        }
+
+        let preview = render_apply_preview_human(&options.root, &plan, &validation);
+        writeln!(output, "{preview}").map_err(|error| error.to_string())?;
+        write!(output, "Apply these moves? [y/N]: ").map_err(|error| error.to_string())?;
+        output.flush().map_err(|error| error.to_string())?;
+
+        let mut response = String::new();
+        input
+            .read_line(&mut response)
+            .map_err(|error| error.to_string())?;
+        if !matches!(response.trim(), "y" | "Y" | "yes" | "YES" | "Yes") {
+            return Ok("Apply cancelled. No files were changed.".to_owned());
+        }
     }
 
     let execution = execute_plan(&options.root, &plan);
@@ -526,8 +552,9 @@ fn usage() -> String {
         "  tidyup apply --root <path> [--yes] [--format human|json]",
         "  tidyup history --root <path> [--format human|json]",
         "",
+        "If --root is omitted, TidyUp uses the current directory.",
         "`scan` and `plan` are read-only.",
-        "`apply` previews by default and only changes files when you add --yes.",
+        "`apply` asks for confirmation by default and changes files immediately with --yes.",
     ]
     .join("\n")
 }
@@ -546,7 +573,8 @@ fn json_option_string(value: Option<&str>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{run, run_with_prompt};
+    use std::io::Cursor;
 
     #[test]
     fn help_is_returned_without_arguments() {
@@ -559,5 +587,47 @@ mod tests {
     fn unknown_command_is_rejected() {
         let error = run(vec!["organize".to_owned()]).expect_err("command should fail");
         assert!(error.contains("unknown command"));
+    }
+
+    #[test]
+    fn scan_defaults_root_to_current_directory() {
+        let original = std::env::current_dir().expect("cwd should exist");
+        let temp_dir =
+            std::env::temp_dir().join(format!("tidyup-cli-default-root-{}", std::process::id()));
+        std::fs::create_dir_all(&temp_dir).expect("temp dir should exist");
+        std::env::set_current_dir(&temp_dir).expect("should switch cwd");
+
+        let result = run(vec!["scan".to_owned()]);
+
+        std::env::set_current_dir(original).expect("should restore cwd");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+
+        let output = result.expect("scan should use cwd");
+        assert!(output.contains("Scanned root:"));
+    }
+
+    #[test]
+    fn apply_can_be_cancelled_interactively() {
+        let temp_dir =
+            std::env::temp_dir().join(format!("tidyup-cli-apply-cancel-{}", std::process::id()));
+        std::fs::create_dir_all(&temp_dir).expect("temp dir should exist");
+        std::fs::write(temp_dir.join("todo.md"), b"todo").expect("file should exist");
+
+        let mut input = Cursor::new(b"n\n");
+        let mut output = Vec::new();
+        let result = run_with_prompt(
+            vec![
+                "apply".to_owned(),
+                "--root".to_owned(),
+                temp_dir.to_string_lossy().into_owned(),
+            ],
+            &mut input,
+            &mut output,
+        )
+        .expect("apply should succeed");
+
+        assert_eq!(result, "Apply cancelled. No files were changed.");
+        assert!(temp_dir.join("todo.md").exists());
+        let _ = std::fs::remove_dir_all(temp_dir);
     }
 }
