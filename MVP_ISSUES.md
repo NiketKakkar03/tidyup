@@ -332,11 +332,11 @@ Raise confidence that the MVP works consistently on Windows and macOS, including
 
 - [ ] Windows CI passes for the supported matrix.
 - [ ] macOS CI passes for the supported matrix.
-- [ ] Unicode filename fixtures pass.
-- [ ] Space-containing path fixtures pass.
-- [ ] Case-collision scenarios are tested where applicable.
+- [x] Unicode filename fixtures pass.
+- [x] Space-containing path fixtures pass.
+- [x] Case-collision scenarios are tested where applicable.
 - [ ] Locked or permission-sensitive scenarios are tested where reproducible.
-- [ ] Known platform limitations are documented where tests cannot be made identical.
+- [x] Known platform limitations are documented where tests cannot be made identical.
 
 **Notes**
 This issue is the evidence gate for many earlier safety claims.
@@ -350,13 +350,13 @@ Make the repository usable by an outside developer and understandable by a first
 
 **Acceptance checklist**
 
-- [ ] `README.md` explains the product, scope boundaries, install path, and guided workflow.
-- [ ] `CONTRIBUTING.md` explains how to build, test, and contribute safely.
-- [ ] `SECURITY.md`, `GOVERNANCE.md`, and `CODE_OF_CONDUCT.md` exist.
-- [ ] Architecture, safety model, journal format, plan format, and CLI contract docs exist.
-- [ ] Rule-pack examples and documentation exist.
-- [ ] `ROADMAP.md` reflects the MVP and explicitly lists out-of-scope items.
-- [ ] Beginner-friendly issue labels or starter tasks are documented.
+- [x] `README.md` explains the product, scope boundaries, install path, and guided workflow.
+- [x] `CONTRIBUTING.md` explains how to build, test, and contribute safely.
+- [x] `SECURITY.md`, `GOVERNANCE.md`, and `CODE_OF_CONDUCT.md` exist.
+- [x] Architecture, safety model, journal format, plan format, and CLI contract docs exist.
+- [x] Rule-pack examples and documentation exist.
+- [x] `ROADMAP.md` reflects the MVP and explicitly lists out-of-scope items.
+- [x] Beginner-friendly issue labels or starter tasks are documented.
 
 **Notes**
 This is part of the MVP definition of done, not a post-release polish task.
@@ -370,12 +370,12 @@ Prepare the project for practical MVP distribution.
 
 **Acceptance checklist**
 
-- [ ] A Windows binary artifact is produced by the release process.
-- [ ] A macOS binary artifact is produced by the release process.
-- [ ] Checksums are generated for release artifacts.
-- [ ] Installation instructions are documented.
-- [ ] Uninstall and local data-location instructions are documented.
-- [ ] Known limitations are explicit in release-facing docs.
+- [x] A Windows binary artifact is produced by the release process.
+- [x] A macOS binary artifact is produced by the release process.
+- [x] Checksums are generated for release artifacts.
+- [x] Installation instructions are documented.
+- [x] Uninstall and local data-location instructions are documented.
+- [x] Known limitations are explicit in release-facing docs.
 
 **Notes**
 Keep packaging simple and reliable; avoid expanding scope into installers unless clearly needed.
@@ -389,11 +389,11 @@ Ship the narrow MVP with evidence that it meets the specification.
 
 **Acceptance checklist**
 
-- [ ] A release checklist exists and is followed.
-- [ ] The end-to-end guided flow works on a disposable demo folder.
-- [ ] The demo includes at least one intentional safety conflict, not only a happy path.
-- [ ] Release notes summarize capability, safety guarantees, and known limitations.
-- [ ] `CHANGELOG.md` includes the `v0.1.0` entry.
+- [x] A release checklist exists and is followed.
+- [x] The end-to-end guided flow works on a disposable demo folder.
+- [x] The demo includes at least one intentional safety conflict, not only a happy path.
+- [x] Release notes summarize capability, safety guarantees, and known limitations.
+- [x] `CHANGELOG.md` includes the `v0.1.0` entry.
 - [ ] The maintainers agree the MVP satisfies the documented definition of done.
 
 **Notes**

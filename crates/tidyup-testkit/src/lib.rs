@@ -217,4 +217,30 @@ mod tests {
             .expect("symlink metadata should exist");
         assert!(metadata.file_type().is_symlink());
     }
+
+    #[test]
+    fn supports_case_collision_layouts_where_filesystem_allows_them() {
+        let fixture = TestFixture::new(&[
+            FixtureEntry::file("Report.txt", b"upper"),
+            FixtureEntry::file("report.txt", b"lower"),
+        ])
+        .expect("fixture should be created");
+
+        let entries = std::fs::read_dir(fixture.root())
+            .expect("fixture root should be readable")
+            .count();
+
+        if entries < 2 {
+            return;
+        }
+
+        assert_eq!(
+            std::fs::read(fixture.path("Report.txt")).expect("upper file should exist"),
+            b"upper"
+        );
+        assert_eq!(
+            std::fs::read(fixture.path("report.txt")).expect("lower file should exist"),
+            b"lower"
+        );
+    }
 }
