@@ -13,6 +13,6 @@
 - [x] `CHANGELOG.md` includes a `v0.1.0` entry
 - [x] Release notes draft exists
 - [x] Disposable demo workflow is documented
-- [ ] Run the disposable end-to-end demo after the final manual test pass
-- [ ] Confirm one intentional safety conflict during the final demo
+- [x] Run the disposable end-to-end demo after the final manual test pass
+- [x] Confirm one intentional safety conflict during the final demo
 - [ ] Maintainer signoff that `v0.1.0` is ready to publish
