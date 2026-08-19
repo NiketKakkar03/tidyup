@@ -53,6 +53,11 @@ The scope is still intentionally limited:
 - no cloud processing
 - no GUI
 
+Current presentation status:
+
+- macOS is the active MVP path
+- Windows packaging and release validation are deferred to later issues
+
 ## What Kind Of Software Is This?
 
 TidyUp is a CLI utility, not a framework.
@@ -222,7 +227,9 @@ See the docs in [docs/](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs) fo
 
 ## Installation And Releases
 
-Release artifacts are built for macOS and Windows by the release workflow in [.github/workflows/release.yml](/Users/niketkakkar/.codex/worktrees/a633/tidyup/.github/workflows/release.yml).
+The current MVP should be presented as macOS-first.
+
+The repository still contains Windows-oriented workflow scaffolding, but Windows distribution should be treated as future work until it is validated and intentionally released.
 
 Until a published binary is downloaded, the easiest local path is:
 
@@ -231,11 +238,7 @@ cargo build --release -p tidyup-cli
 ./target/release/tidyup scan
 ```
 
-Windows users can run:
-
-```powershell
-.\target\release\tidyup.exe scan
-```
+For the current MVP demo and showcase, use the macOS binary path above.
 
 ## In One Sentence
 

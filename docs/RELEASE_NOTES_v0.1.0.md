@@ -1,6 +1,6 @@
 # Release Notes `v0.1.0`
 
-TidyUp `v0.1.0` is the first narrow MVP release.
+TidyUp `v0.1.0` is the first narrow macOS MVP release.
 
 What it does:
 
@@ -24,3 +24,4 @@ Known limitations:
 - no recursive cleanup
 - no GUI installer
 - no automatic collision renaming
+- Windows distribution is intentionally deferred until later implementation work

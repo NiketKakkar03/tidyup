@@ -56,8 +56,6 @@ The repository is prepared for GitHub-hosted CI and release artifact generation 
 - `.github/workflows/ci.yml`
 - `.github/workflows/release.yml`
 
-GitHub-hosted run results and uploaded artifacts should be used as the final evidence for:
+For the current MVP presentation, the primary evidence is the macOS local validation and demo flow recorded above.
 
-- Windows CI pass confirmation
-- macOS CI pass confirmation
-- release artifact production on both supported operating systems
+Windows CI and Windows packaging should be tracked as deferred follow-up work in GitHub issues rather than presented as part of the current MVP release claim.
