@@ -1,75 +1,102 @@
-# Installation
+# Install TidyUp on macOS
 
-## Current MVP Install Path
+TidyUp supports Apple Silicon and Intel Macs. You do not need Rust or administrator access when installing a release download.
 
-The current MVP should be presented as macOS-first.
+## 1. Choose the correct download
 
-Build the release binary:
-
-```bash
-cargo build --release -p tidyup-cli
-```
-
-macOS:
+Run:
 
 ```bash
-./target/release/tidyup scan
+uname -m
 ```
 
-## Windows Status
+Download both the archive and matching checksum from the GitHub Releases page:
 
-Windows workflow scaffolding exists in the repository, but Windows distribution is deferred until the packaging and validation issues are intentionally completed.
+| Result | Archive |
+| --- | --- |
+| `arm64` | `tidyup-macos-apple-silicon.tar.gz` |
+| `x86_64` | `tidyup-macos-intel.tar.gz` |
 
-## Release Artifacts
+## 2. Verify the download
 
-The repository contains release workflow scaffolding for:
-
-- `tidyup-macos.tar.gz`
-- `tidyup-windows.zip`
-- matching `.sha256` checksum files
-
-The workflow definition lives at:
-
-- `.github/workflows/release.yml`
-
-For the current MVP, the supported showcase path is macOS.
-
-## Downloaded Artifact Usage
-
-macOS:
+In the folder containing both downloaded files, run:
 
 ```bash
-tar -xzf tidyup-macos.tar.gz
-./tidyup scan
+shasum -a 256 -c tidyup-macos-<type>.tar.gz.sha256
 ```
 
-## Checksum Verification
+Replace `<type>` with `apple-silicon` or `intel`. A valid download prints `OK`.
 
-macOS:
+## 3. Install
 
 ```bash
-shasum -a 256 -c tidyup-macos.tar.gz.sha256
+tar -xzf tidyup-macos-<type>.tar.gz
+cd tidyup-macos-<type>
+./install.sh
 ```
 
-## Data Location
+The installer copies TidyUp to `~/.local/bin/tidyup`. If `~/.local/bin` is not already in your command path, it prints the exact line to add to `~/.zshrc`.
 
-TidyUp stores operation history inside the selected root:
+Open a new Terminal window, then verify the installation:
 
-```text
-.tidyup/history.sqlite3
+```bash
+tidyup --help
 ```
+
+## 4. Try it safely
+
+Move into a folder you want to inspect. `scan` and `plan` do not change files.
+
+```bash
+cd ~/Downloads
+tidyup scan
+tidyup plan
+tidyup apply
+```
+
+`apply` shows every proposed destination and asks before moving anything. Use `tidyup apply --verbose` when you want full paths.
+
+## Install somewhere else
+
+Set `TIDYUP_INSTALL_DIR` for both installation and removal:
+
+```bash
+TIDYUP_INSTALL_DIR=/usr/local/bin ./install.sh
+```
+
+The selected directory must be writable. Installing to `/usr/local/bin` may require administrator permission on some Macs; the default `~/.local/bin` does not.
 
 ## Uninstall
 
-If you built locally with Cargo:
+From the extracted release folder:
 
-- remove the binary under `target/release/`
-- optionally remove Cargo build artifacts with `cargo clean`
+```bash
+./uninstall.sh
+```
 
-If you downloaded a release archive:
+This removes the executable from `~/.local/bin`. It deliberately leaves each organized folder's `.tidyup/history.sqlite3` in place, preserving operation and undo records.
 
-- delete the extracted `tidyup` binary
+To remove an installation from a custom directory:
 
-If you want to remove TidyUp-created local data for one organized folder:
+```bash
+TIDYUP_INSTALL_DIR=/usr/local/bin ./uninstall.sh
+```
 
-- delete that folder’s `.tidyup/` directory
+## Build from source
+
+Developers with Rust installed can build the same executable:
+
+```bash
+git clone https://github.com/NiketKakkar03/tidyup.git
+cd tidyup
+cargo build --release --locked -p tidyup-cli
+./target/release/tidyup --help
+```
+
+## Release security
+
+Each archive has a SHA-256 checksum. Official public releases should also be signed and notarized with an Apple Developer ID; the release workflow supports this when the maintainer configures the documented GitHub secrets.
+
+## Windows status
+
+Windows distribution is deferred. The current supported release path is macOS.

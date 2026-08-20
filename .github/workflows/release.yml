@@ -1,4 +1,4 @@
-name: Release
+name: Release macOS
 
 on:
   workflow_dispatch:
@@ -6,16 +6,31 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
-  build-artifacts:
-    name: Build Artifact (${{ matrix.os }})
+  build-macos:
+    name: Build ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - windows-latest
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+            label: macos-apple-silicon
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            label: macos-intel
+
+    env:
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
 
     steps:
       - name: Check out repository
@@ -23,44 +38,59 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-      - name: Cache cargo registry and build output
+      - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
 
+      - name: Test workspace
+        run: cargo test --workspace --locked
+
       - name: Build release binary
-        run: cargo build --release -p tidyup-cli
+        run: cargo build --release --locked -p tidyup-cli --target "${{ matrix.target }}"
 
-      - name: Package artifact (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p dist
-          cp target/release/tidyup dist/tidyup
-          tar -czf tidyup-macos.tar.gz -C dist tidyup
-          shasum -a 256 tidyup-macos.tar.gz > tidyup-macos.tar.gz.sha256
+      - name: Import Apple signing certificate
+        if: env.APPLE_CERTIFICATE_P12 != ''
+        run: ./scripts/import-apple-certificate.sh
 
-      - name: Package artifact (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item target/release/tidyup.exe dist/tidyup.exe
-          Compress-Archive -Path dist/tidyup.exe -DestinationPath tidyup-windows.zip -Force
-          (Get-FileHash tidyup-windows.zip -Algorithm SHA256).Hash + "  tidyup-windows.zip" | Out-File tidyup-windows.zip.sha256 -Encoding ascii
+      - name: Sign binary
+        if: env.APPLE_SIGNING_IDENTITY != ''
+        run: codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "target/${{ matrix.target }}/release/tidyup"
 
-      - name: Upload macOS packaged artifact
-        if: runner.os == 'macOS'
+      - name: Package artifact
+        run: ./scripts/package-macos.sh "${{ matrix.target }}" "${{ matrix.label }}"
+
+      - name: Notarize artifact
+        if: env.APPLE_ID != '' && env.APPLE_TEAM_ID != '' && env.APPLE_APP_PASSWORD != ''
+        run: xcrun notarytool submit "dist/tidyup-${{ matrix.label }}.tar.gz" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+
+      - name: Upload packaged artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tidyup-macOS
+          name: tidyup-${{ matrix.label }}
           path: |
-            tidyup-macos.tar.gz
-            tidyup-macos.tar.gz.sha256
+            dist/tidyup-${{ matrix.label }}.tar.gz
+            dist/tidyup-${{ matrix.label }}.tar.gz.sha256
 
-      - name: Upload Windows packaged artifact
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+  publish-release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: tidyup-Windows
-          path: |
-            tidyup-windows.zip
-            tidyup-windows.zip.sha256
+          pattern: tidyup-macos-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release files
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256

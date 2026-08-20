@@ -1,4 +1,4 @@
 /target
-Cargo.lock
+/dist
 MVP_ISSUES.md
 TIDYUP_PROJECT_STRUCTURE.md

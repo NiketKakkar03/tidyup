@@ -2,6 +2,8 @@
 
 TidyUp `v0.1.0` is the first narrow macOS MVP release.
 
+Downloads are provided separately for Apple Silicon and Intel Macs. Each archive includes a no-admin installer, an uninstaller, and a SHA-256 checksum.
+
 What it does:
 
 - previews direct-child file organization inside one selected folder
@@ -22,6 +24,6 @@ Known limitations:
 - direct-child files only
 - built-in extension rules only
 - no recursive cleanup
-- no GUI installer
+- terminal-based installer only
 - no automatic collision renaming
 - Windows distribution is intentionally deferred until later implementation work

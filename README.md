@@ -77,9 +77,40 @@ So if you want to use it with your own codebase later, the natural model is:
 - or call it from scripts/automation
 - or use its JSON output from another program
 
-## Quickstart
+## Install On macOS
 
-If you already have Rust installed:
+TidyUp publishes separate downloads for Apple Silicon and Intel Macs. Check your Mac type with:
+
+```bash
+uname -m
+```
+
+- `arm64`: download `tidyup-macos-apple-silicon.tar.gz`
+- `x86_64`: download `tidyup-macos-intel.tar.gz`
+
+After downloading the matching archive from the GitHub Releases page:
+
+```bash
+shasum -a 256 -c tidyup-macos-<type>.tar.gz.sha256
+tar -xzf tidyup-macos-<type>.tar.gz
+cd tidyup-macos-<type>
+./install.sh
+```
+
+The installer puts `tidyup` in `~/.local/bin` and tells you if that folder needs to be added to your shell path. It does not need administrator access.
+
+Then open a folder you want to organize and start with the read-only preview:
+
+```bash
+cd ~/Downloads
+tidyup scan
+tidyup plan
+tidyup apply
+```
+
+## Build From Source
+
+If you are developing TidyUp or already have Rust installed:
 
 ```bash
 git clone https://github.com/NiketKakkar03/tidyup.git
@@ -223,20 +254,22 @@ cargo run -p tidyup-cli -- history --format json
 - Plans and rule packs are treated as untrusted inputs.
 - TidyUp warns when you run it in a project-like folder because repositories are usually a poor fit for the tool.
 
-See the docs in [docs/](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs) for the architecture, safety model, plan format, journal format, CLI contract, and rule-pack details.
+See the [docs](docs/) for the architecture, safety model, plan format, journal format, CLI contract, and rule-pack details.
 
 ## Installation And Releases
 
-The current MVP should be presented as macOS-first.
+The current MVP is macOS-first. Tagged releases create draft GitHub Releases with separate Apple Silicon and Intel downloads, SHA-256 checksums, and bundled install/uninstall scripts.
 
-The repository still contains Windows-oriented workflow scaffolding, but Windows distribution should be treated as future work until it is validated and intentionally released.
+Windows distribution is future work and should not be presented as supported yet.
 
-Until a published binary is downloaded, the easiest local path is:
+To build locally instead:
 
 ```bash
 cargo build --release -p tidyup-cli
 ./target/release/tidyup scan
 ```
+
+See [docs/INSTALLATION.md](docs/INSTALLATION.md) for full installation, verification, and uninstall instructions.
 
 For the current MVP demo and showcase, use the macOS binary path above.
 
@@ -246,12 +279,12 @@ TidyUp is a cautious folder-cleanup tool for people who want preview, audit hist
 
 ## Additional Docs
 
-- [CONTRIBUTING.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/CONTRIBUTING.md)
-- [SECURITY.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/SECURITY.md)
-- [GOVERNANCE.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/GOVERNANCE.md)
-- [CODE_OF_CONDUCT.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/CODE_OF_CONDUCT.md)
-- [ROADMAP.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/ROADMAP.md)
-- [RELEASE_CHECKLIST.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/RELEASE_CHECKLIST.md)
-- [CHANGELOG.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/CHANGELOG.md)
-- [docs/INSTALLATION.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/INSTALLATION.md)
-- [docs/RELEASE_EVIDENCE_v0.1.0.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/RELEASE_EVIDENCE_v0.1.0.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)
+- [GOVERNANCE.md](GOVERNANCE.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [ROADMAP.md](ROADMAP.md)
+- [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)
+- [CHANGELOG.md](CHANGELOG.md)
+- [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- [docs/RELEASE_EVIDENCE_v0.1.0.md](docs/RELEASE_EVIDENCE_v0.1.0.md)
