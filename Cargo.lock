@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "tidyup-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "tidyup-core",
  "tidyup-storage",
@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "tidyup-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "tidyup-platform",
  "tidyup-testkit",
@@ -21,14 +21,14 @@ dependencies = [
 
 [[package]]
 name = "tidyup-platform"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "tidyup-testkit",
 ]
 
 [[package]]
 name = "tidyup-storage"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "tidyup-core",
  "tidyup-testkit",
@@ -36,4 +36,4 @@ dependencies = [
 
 [[package]]
 name = "tidyup-testkit"
-version = "0.1.0"
+version = "0.1.1"

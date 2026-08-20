@@ -1,5 +1,12 @@
 # Changelog
 
+## `v0.1.1` - August 20, 2026
+
+Patch release:
+
+- fix sequential numbering in human-readable `scan` results
+- add regression coverage for multi-file scan output
+
 ## `v0.1.0` - August 19, 2026
 
 Initial MVP release candidate.
