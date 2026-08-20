@@ -222,7 +222,9 @@ See the docs in [docs/](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs) fo
 
 ## Installation And Releases
 
-Release artifacts are built for macOS and Windows by the release workflow in [.github/workflows/release.yml](/Users/niketkakkar/.codex/worktrees/a633/tidyup/.github/workflows/release.yml).
+The `v0.1.0` draft release is intended for public use under the MIT license in [LICENSE](/Users/niketkakkar/.codex/worktrees/9a27/tidyup/LICENSE).
+
+Release artifacts are currently built for macOS by the release workflow in [.github/workflows/release.yml](/Users/niketkakkar/.codex/worktrees/9a27/tidyup/.github/workflows/release.yml). Windows distribution is deferred until a later release.
 
 Until a published binary is downloaded, the easiest local path is:
 
@@ -233,9 +235,7 @@ cargo build --release -p tidyup-cli
 
 Windows users can run:
 
-```powershell
-.\target\release\tidyup.exe scan
-```
+The shipped MVP remains a CLI-first tool. If you need another platform today, building from source is the supported path until additional release artifacts are published.
 
 ## In One Sentence
 
@@ -250,5 +250,6 @@ TidyUp is a cautious folder-cleanup tool for people who want preview, audit hist
 - [ROADMAP.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/ROADMAP.md)
 - [RELEASE_CHECKLIST.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/RELEASE_CHECKLIST.md)
 - [CHANGELOG.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/CHANGELOG.md)
+- [LICENSE](/Users/niketkakkar/.codex/worktrees/9a27/tidyup/LICENSE)
 - [docs/INSTALLATION.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/INSTALLATION.md)
 - [docs/RELEASE_EVIDENCE_v0.1.0.md](/Users/niketkakkar/.codex/worktrees/a633/tidyup/docs/RELEASE_EVIDENCE_v0.1.0.md)

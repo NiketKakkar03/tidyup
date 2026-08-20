@@ -15,6 +15,12 @@ pub const PLAN_SCHEMA_VERSION: &str = "plan/v1";
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PlanId(String);
 
+impl Default for PlanId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PlanId {
     #[must_use]
     pub fn new() -> Self {
@@ -30,6 +36,12 @@ impl PlanId {
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct OperationId(String);
+
+impl Default for OperationId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl OperationId {
     #[must_use]
@@ -48,6 +60,7 @@ impl OperationId {
 pub struct ActionId(String);
 
 impl ActionId {
+    #[must_use]
     pub fn from_index(index: usize) -> Self {
         Self(format!("action-{index:04}"))
     }
@@ -68,6 +81,12 @@ pub struct FileSnapshot {
 }
 
 impl FileSnapshot {
+    /// Captures a stable snapshot for a file located within the selected root.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScanError`] when the path escapes the selected root, cannot be
+    /// read, or uses a non-Unicode file name.
     pub fn from_root(root: &Path, path: &Path) -> Result<Self, ScanError> {
         let relative_path = path
             .strip_prefix(root)
@@ -90,7 +109,7 @@ impl FileSnapshot {
         let extension = path
             .extension()
             .and_then(std::ffi::OsStr::to_str)
-            .map(|value| value.to_ascii_lowercase());
+            .map(str::to_ascii_lowercase);
         let modified_unix_seconds = metadata
             .modified()
             .ok()
@@ -176,6 +195,12 @@ impl fmt::Display for ScanError {
 
 impl std::error::Error for ScanError {}
 
+/// Scans direct-child entries within the selected root for `TidyUp` planning.
+///
+/// # Errors
+///
+/// Returns [`ScanError`] when the root cannot be read or a required file
+/// snapshot cannot be collected safely.
 pub fn scan_root(root: &Path) -> Result<ScanReport, ScanError> {
     let mut scanned_files = Vec::new();
     let mut skipped_entries = Vec::new();
@@ -192,15 +217,12 @@ pub fn scan_root(root: &Path) -> Result<ScanReport, ScanError> {
         let relative_path = path
             .strip_prefix(root)
             .map_or_else(|_| path.clone(), Path::to_path_buf);
-        let metadata = match fs::symlink_metadata(&path) {
-            Ok(metadata) => metadata,
-            Err(_) => {
-                skipped_entries.push(SkippedEntry {
-                    relative_path,
-                    reason: ScanSkipReason::MetadataReadFailed,
-                });
-                continue;
-            }
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            skipped_entries.push(SkippedEntry {
+                relative_path,
+                reason: ScanSkipReason::MetadataReadFailed,
+            });
+            continue;
         };
         let file_type = metadata.file_type();
         if file_type.is_symlink() {
@@ -270,6 +292,12 @@ impl RulePackV1 {
         }
     }
 
+    /// Validates the rule pack structure before planning.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RulePackValidationError`] when the schema version, pack id,
+    /// rule ids, destinations, or extension assignments are invalid.
     pub fn validate(&self) -> Result<(), RulePackValidationError> {
         if self.schema_version != RULE_PACK_SCHEMA_VERSION {
             return Err(RulePackValidationError::UnsupportedSchemaVersion(
@@ -410,6 +438,7 @@ pub struct Classification {
     pub reason: String,
 }
 
+#[must_use]
 pub fn classify_snapshot(snapshot: &FileSnapshot, pack: &RulePackV1) -> Option<Classification> {
     let extension = snapshot.extension.as_ref()?;
     for rule in &pack.rules {
@@ -471,6 +500,12 @@ impl PlanSkipReason {
     }
 }
 
+/// Builds a plan from a scan report and validated rule pack.
+///
+/// # Errors
+///
+/// Returns [`RulePackValidationError`] when the supplied rule pack is not safe
+/// or structurally valid for planning.
 pub fn build_plan(scan: &ScanReport, pack: &RulePackV1) -> Result<Plan, RulePackValidationError> {
     pack.validate()?;
 
@@ -585,6 +620,7 @@ impl ValidationReasonCode {
     }
 }
 
+#[must_use]
 pub fn validate_plan(root: &Path, plan: &Plan) -> ValidationReport {
     let mut valid_actions = Vec::new();
     let mut invalid_actions = Vec::new();
@@ -716,6 +752,7 @@ pub enum ActionExecutionStatus {
     },
 }
 
+#[must_use]
 pub fn execute_plan(root: &Path, plan: &Plan) -> ExecutionReport {
     let mut results = Vec::with_capacity(plan.moves.len());
 

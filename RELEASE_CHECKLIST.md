@@ -7,8 +7,9 @@
 - [x] Interactive `apply` exists
 - [x] SQLite-backed history exists
 - [x] `undo` exists
-- [x] CI workflow covers macOS and Windows runners in configuration
-- [x] Release workflow builds Windows and macOS artifacts in configuration
+- [x] CI workflow has a passing macOS verification run for the release candidate
+- [x] Release workflow builds the macOS release artifact in configuration
+- [x] MIT license text is present in `LICENSE`
 - [x] README explains installation, commands, and current limitations
 - [x] `CHANGELOG.md` includes a `v0.1.0` entry
 - [x] Release notes draft exists

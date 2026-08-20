@@ -2,6 +2,12 @@
 name = "tidyup-platform"
 version = "0.1.0"
 edition = "2024"
+description = "Platform filesystem operations used by TidyUp."
+license = "MIT"
+repository = "https://github.com/NiketKakkar03/tidyup"
+readme = "../../README.md"
+keywords = ["filesystem", "rename", "platform", "cleanup", "organize"]
+categories = ["filesystem", "command-line-utilities"]
 
 [lib]
 path = "src/lib.rs"

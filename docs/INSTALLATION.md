@@ -14,23 +14,20 @@ macOS and Linux:
 ./target/release/tidyup scan
 ```
 
-Windows PowerShell:
-
-```powershell
-.\target\release\tidyup.exe scan
-```
+Windows packaging is deferred for `v0.1.0`. If you need Windows support before an official artifact exists, build from source in your own environment.
 
 ## Release Artifacts
 
 The release workflow builds:
 
 - `tidyup-macos.tar.gz`
-- `tidyup-windows.zip`
 - matching `.sha256` checksum files
 
 The workflow definition lives at:
 
 - `.github/workflows/release.yml`
+
+The public `v0.1.0` draft release is distributed under the MIT license in `LICENSE`.
 
 ## Downloaded Artifact Usage
 
@@ -41,27 +38,12 @@ tar -xzf tidyup-macos.tar.gz
 ./tidyup scan
 ```
 
-Windows PowerShell:
-
-```powershell
-Expand-Archive .\tidyup-windows.zip -DestinationPath .
-.\tidyup.exe scan
-```
-
 ## Checksum Verification
 
 macOS:
 
 ```bash
 shasum -a 256 -c tidyup-macos.tar.gz.sha256
-```
-
-Windows PowerShell:
-
-```powershell
-$expected = (Get-Content .\tidyup-windows.zip.sha256).Split(' ')[0]
-$actual = (Get-FileHash .\tidyup-windows.zip -Algorithm SHA256).Hash
-$actual.ToLower() -eq $expected.ToLower()
 ```
 
 ## Data Location
@@ -81,7 +63,7 @@ If you built locally with Cargo:
 
 If you downloaded a release archive:
 
-- delete the extracted `tidyup` or `tidyup.exe` binary
+- delete the extracted `tidyup` binary
 
 If you want to remove TidyUp-created local data for one organized folder:
 

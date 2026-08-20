@@ -1,6 +1,6 @@
 # Release Evidence `v0.1.0`
 
-Recorded on August 19, 2026.
+Recorded on August 20, 2026.
 
 ## Local Validation Completed
 
@@ -42,6 +42,7 @@ Intentional safety-conflict demo root:
 
 The repository includes:
 
+- `LICENSE`
 - `README.md`
 - `docs/INSTALLATION.md`
 - `docs/PLATFORM_LIMITATIONS.md`
@@ -58,6 +59,5 @@ The repository is prepared for GitHub-hosted CI and release artifact generation 
 
 GitHub-hosted run results and uploaded artifacts should be used as the final evidence for:
 
-- Windows CI pass confirmation
 - macOS CI pass confirmation
-- release artifact production on both supported operating systems
+- macOS release artifact production

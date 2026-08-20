@@ -2,6 +2,12 @@
 name = "tidyup-cli"
 version = "0.1.0"
 edition = "2024"
+description = "Safe folder organization CLI with preview, history, and undo."
+license = "MIT"
+repository = "https://github.com/NiketKakkar03/tidyup"
+readme = "../../README.md"
+keywords = ["cli", "cleanup", "organize", "files", "undo"]
+categories = ["command-line-utilities", "filesystem"]
 
 [dependencies]
 tidyup-core = { path = "../tidyup-core" }

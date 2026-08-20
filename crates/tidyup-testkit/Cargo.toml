@@ -2,6 +2,12 @@
 name = "tidyup-testkit"
 version = "0.1.0"
 edition = "2024"
+description = "Test fixture helpers for TidyUp workspace crates."
+license = "MIT"
+repository = "https://github.com/NiketKakkar03/tidyup"
+readme = "../../README.md"
+keywords = ["testing", "fixtures", "filesystem", "cleanup", "organize"]
+categories = ["development-tools::testing", "filesystem"]
 
 [lib]
 path = "src/lib.rs"

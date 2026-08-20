@@ -35,6 +35,13 @@ impl fmt::Display for MoveError {
 
 impl std::error::Error for MoveError {}
 
+/// Moves a file within the selected root while preserving `TidyUp`'s safety rules.
+///
+/// # Errors
+///
+/// Returns [`MoveError`] when either path is absolute, the destination escapes
+/// the selected root, the source is missing, the destination already exists, or
+/// the underlying filesystem rename/create operations fail.
 pub fn move_file_within_root(
     root: &Path,
     source_relative_path: &Path,

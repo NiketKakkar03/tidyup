@@ -13,6 +13,12 @@ pub struct TestFixture {
 }
 
 impl TestFixture {
+    /// Creates a disposable fixture root and materializes each requested entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the temporary fixture root cannot be created or any
+    /// requested entry cannot be written to disk.
     pub fn new(entries: &[FixtureEntry]) -> io::Result<Self> {
         let root = unique_fixture_root()?;
 
@@ -114,6 +120,12 @@ impl fmt::Display for UnsupportedFeatureError {
 
 impl std::error::Error for UnsupportedFeatureError {}
 
+/// Creates a symlink fixture entry on platforms that support symlink tests.
+///
+/// # Errors
+///
+/// Returns [`UnsupportedFeatureError`] when the current platform does not
+/// support the symlink-based fixture path used by this testkit.
 pub fn try_create_symlink_fixture(
     path: impl Into<PathBuf>,
     target: impl Into<PathBuf>,
@@ -206,9 +218,8 @@ mod tests {
 
     #[test]
     fn creates_symlink_fixtures_when_supported() {
-        let symlink = match try_create_symlink_fixture("aliases/report.txt", "../report.txt") {
-            Ok(entry) => entry,
-            Err(_) => return,
+        let Ok(symlink) = try_create_symlink_fixture("aliases/report.txt", "../report.txt") else {
+            return;
         };
         let fixture = TestFixture::new(&[FixtureEntry::file("report.txt", b"hello"), symlink])
             .expect("fixture should be created");

@@ -8,14 +8,8 @@ on:
 
 jobs:
   build-artifacts:
-    name: Build Artifact (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
+    name: Build Artifact (macOS)
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
@@ -30,37 +24,17 @@ jobs:
       - name: Build release binary
         run: cargo build --release -p tidyup-cli
 
-      - name: Package artifact (macOS)
-        if: runner.os == 'macOS'
+      - name: Package artifact
         run: |
           mkdir -p dist
           cp target/release/tidyup dist/tidyup
           tar -czf tidyup-macos.tar.gz -C dist tidyup
           shasum -a 256 tidyup-macos.tar.gz > tidyup-macos.tar.gz.sha256
 
-      - name: Package artifact (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item target/release/tidyup.exe dist/tidyup.exe
-          Compress-Archive -Path dist/tidyup.exe -DestinationPath tidyup-windows.zip -Force
-          (Get-FileHash tidyup-windows.zip -Algorithm SHA256).Hash + "  tidyup-windows.zip" | Out-File tidyup-windows.zip.sha256 -Encoding ascii
-
-      - name: Upload macOS packaged artifact
-        if: runner.os == 'macOS'
+      - name: Upload packaged artifact
         uses: actions/upload-artifact@v4
         with:
           name: tidyup-macOS
           path: |
             tidyup-macos.tar.gz
             tidyup-macos.tar.gz.sha256
-
-      - name: Upload Windows packaged artifact
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tidyup-Windows
-          path: |
-            tidyup-windows.zip
-            tidyup-windows.zip.sha256

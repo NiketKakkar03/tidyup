@@ -2,6 +2,12 @@
 name = "tidyup-storage"
 version = "0.1.0"
 edition = "2024"
+description = "SQLite-backed operation history for TidyUp."
+license = "MIT"
+repository = "https://github.com/NiketKakkar03/tidyup"
+readme = "../../README.md"
+keywords = ["sqlite", "history", "filesystem", "cleanup", "undo"]
+categories = ["database", "filesystem", "command-line-utilities"]
 
 [lib]
 path = "src/lib.rs"

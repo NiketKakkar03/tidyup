@@ -13,7 +13,8 @@ use tidyup_storage::{
 };
 
 fn main() {
-    match run(env::args().skip(1).collect()) {
+    let args = env::args().skip(1).collect::<Vec<_>>();
+    match run(&args) {
         Ok(outcome) => {
             if !outcome.output.is_empty() {
                 println!("{}", outcome.output);
@@ -49,14 +50,14 @@ impl CommandOutcome {
     }
 }
 
-fn run(args: Vec<String>) -> Result<CommandOutcome, String> {
+fn run(args: &[String]) -> Result<CommandOutcome, String> {
     let stdin = io::stdin();
     let stdout = io::stdout();
     run_with_prompt(args, &mut stdin.lock(), &mut stdout.lock())
 }
 
 fn run_with_prompt(
-    args: Vec<String>,
+    args: &[String],
     input: &mut impl io::BufRead,
     output: &mut impl Write,
 ) -> Result<CommandOutcome, String> {
@@ -65,11 +66,11 @@ fn run_with_prompt(
     };
 
     match command {
-        "scan" => run_scan(ReadOnlyCommandOptions::parse(&args[1..])?),
-        "plan" => run_plan(ReadOnlyCommandOptions::parse(&args[1..])?),
-        "apply" => run_apply(ApplyCommandOptions::parse(&args[1..])?, input, output),
+        "scan" => run_scan(&ReadOnlyCommandOptions::parse(&args[1..])?),
+        "plan" => run_plan(&ReadOnlyCommandOptions::parse(&args[1..])?),
+        "apply" => run_apply(&ApplyCommandOptions::parse(&args[1..])?, input, output),
         "history" => run_history(HistoryCommand::parse(&args[1..])?),
-        "undo" => run_undo(UndoCommandOptions::parse(&args[1..])?, input, output),
+        "undo" => run_undo(&UndoCommandOptions::parse(&args[1..])?, input, output),
         "--help" | "-h" | "help" => Ok(CommandOutcome::success(usage())),
         _ => Err(format!("unknown command: {command}\n\n{}", usage())),
     }
@@ -207,7 +208,7 @@ impl UndoCommandOptions {
     }
 }
 
-fn run_scan(options: ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
+fn run_scan(options: &ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
     let scan = scan_root(&options.common.root).map_err(|error| error.to_string())?;
     Ok(CommandOutcome::success(match options.common.format {
         OutputFormat::Human => render_scan_human(&scan),
@@ -215,7 +216,7 @@ fn run_scan(options: ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
     }))
 }
 
-fn run_plan(options: ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
+fn run_plan(options: &ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
     let scan = scan_root(&options.common.root).map_err(|error| error.to_string())?;
     let plan = build_plan(&scan, &RulePackV1::built_in()).map_err(|error| error.to_string())?;
     let validation = validate_plan(&options.common.root, &plan);
@@ -227,7 +228,7 @@ fn run_plan(options: ReadOnlyCommandOptions) -> Result<CommandOutcome, String> {
 }
 
 fn run_apply(
-    options: ApplyCommandOptions,
+    options: &ApplyCommandOptions,
     input: &mut impl io::BufRead,
     output: &mut impl Write,
 ) -> Result<CommandOutcome, String> {
@@ -265,12 +266,9 @@ fn run_apply(
     persist_execution(&history_db_path, &plan, &execution).map_err(|error| error.to_string())?;
 
     let output_text = match options.common.format {
-        OutputFormat::Human => render_apply_result_human(
-            &history_db_path,
-            &plan,
-            &execution,
-            options.common.verbose,
-        ),
+        OutputFormat::Human => {
+            render_apply_result_human(&history_db_path, &plan, &execution, options.common.verbose)
+        }
         OutputFormat::Json => render_apply_result_json(&history_db_path, &plan, &execution),
     };
 
@@ -317,7 +315,7 @@ fn run_history(command: HistoryCommand) -> Result<CommandOutcome, String> {
 }
 
 fn run_undo(
-    options: UndoCommandOptions,
+    options: &UndoCommandOptions,
     input: &mut impl io::BufRead,
     output: &mut impl Write,
 ) -> Result<CommandOutcome, String> {
@@ -339,12 +337,8 @@ fn run_undo(
             )));
         }
 
-        let preview = render_undo_preview_human(
-            operation,
-            &undo_plan,
-            &validation,
-            options.common.verbose,
-        );
+        let preview =
+            render_undo_preview_human(operation, &undo_plan, &validation, options.common.verbose);
         writeln!(output, "{preview}").map_err(|error| error.to_string())?;
         write!(output, "Restore these files? [y/N]: ").map_err(|error| error.to_string())?;
         output.flush().map_err(|error| error.to_string())?;
@@ -365,15 +359,13 @@ fn run_undo(
         .map_err(|error| error.to_string())?;
 
     let output_text = match options.common.format {
-        OutputFormat::Human => {
-            render_undo_result_human(
-                &history_db_path,
-                operation,
-                &undo_plan,
-                &execution,
-                options.common.verbose,
-            )
-        }
+        OutputFormat::Human => render_undo_result_human(
+            &history_db_path,
+            operation,
+            &undo_plan,
+            &execution,
+            options.common.verbose,
+        ),
         OutputFormat::Json => render_apply_result_json(&history_db_path, &undo_plan, &execution),
     };
 
@@ -402,10 +394,7 @@ fn build_undo_plan(
     {
         let current_source = root.join(&result.destination_relative_path);
         let source_snapshot = FileSnapshot::from_root(root, &current_source).map_err(|error| {
-            format!(
-                "could not prepare undo plan for operation {}: {}",
-                target_operation_id, error
-            )
+            format!("could not prepare undo plan for operation {target_operation_id}: {error}")
         })?;
         let destination_dir = result
             .source_relative_path
@@ -514,11 +503,7 @@ fn render_plan_human(plan: &Plan, validation: &ValidationReport) -> String {
     lines.join("\n")
 }
 
-fn render_apply_preview_human(
-    plan: &Plan,
-    validation: &ValidationReport,
-    verbose: bool,
-) -> String {
+fn render_apply_preview_human(plan: &Plan, validation: &ValidationReport, verbose: bool) -> String {
     let mut lines = banner_lines("Apply Preview", &plan.root);
     lines.push(format!(
         "{} file(s) are ready to move now.",
@@ -579,7 +564,7 @@ fn render_apply_result_human(
             &plan.root,
             &result.source_relative_path,
             &result.destination_relative_path,
-            human_execution_status(&result.status),
+            &human_execution_status(&result.status),
             verbose,
         ));
     }
@@ -730,7 +715,7 @@ fn render_undo_result_human(
             &plan.root,
             &result.source_relative_path,
             &result.destination_relative_path,
-            human_execution_status(&result.status),
+            &human_execution_status(&result.status),
             verbose,
         ));
     }
@@ -765,7 +750,7 @@ fn render_result_line(
     root: &Path,
     source_relative_path: &Path,
     destination_relative_path: &Path,
-    status: String,
+    status: &str,
     verbose: bool,
 ) -> String {
     if verbose {
@@ -985,8 +970,7 @@ fn human_action_record_status(record: &ActionResultRecord) -> String {
             .reason_code
             .as_deref()
             .map(human_validation_reason)
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| "skipped".to_owned()),
+            .map_or_else(|| "skipped".to_owned(), ToOwned::to_owned),
         "failed" => record.detail.clone().unwrap_or_else(|| "failed".to_owned()),
         other => other.to_owned(),
     }
@@ -1084,14 +1068,16 @@ mod tests {
 
     #[test]
     fn help_is_returned_without_arguments() {
-        let output = run(Vec::new()).expect("usage should render");
+        let args = Vec::new();
+        let output = run(&args).expect("usage should render");
         assert!(output.output.contains("tidyup scan"));
         assert!(output.output.contains("tidyup undo"));
     }
 
     #[test]
     fn unknown_command_is_rejected() {
-        let error = run(vec!["organize".to_owned()]).expect_err("command should fail");
+        let args = vec!["organize".to_owned()];
+        let error = run(&args).expect_err("command should fail");
         assert!(error.contains("unknown command"));
     }
 
@@ -1103,7 +1089,8 @@ mod tests {
         std::fs::create_dir_all(&temp_dir).expect("temp dir should exist");
         std::env::set_current_dir(&temp_dir).expect("should switch cwd");
 
-        let result = run(vec!["scan".to_owned()]);
+        let args = vec!["scan".to_owned()];
+        let result = run(&args);
 
         std::env::set_current_dir(original).expect("should restore cwd");
         let _ = std::fs::remove_dir_all(&temp_dir);
@@ -1121,16 +1108,12 @@ mod tests {
 
         let mut input = Cursor::new(b"n\n");
         let mut output = Vec::new();
-        let result = run_with_prompt(
-            vec![
-                "apply".to_owned(),
-                "--root".to_owned(),
-                temp_dir.to_string_lossy().into_owned(),
-            ],
-            &mut input,
-            &mut output,
-        )
-        .expect("apply should succeed");
+        let args = vec![
+            "apply".to_owned(),
+            "--root".to_owned(),
+            temp_dir.to_string_lossy().into_owned(),
+        ];
+        let result = run_with_prompt(&args, &mut input, &mut output).expect("apply should succeed");
 
         assert_eq!(result.output, "Apply cancelled. No files were changed.");
         assert!(temp_dir.join("todo.md").exists());
