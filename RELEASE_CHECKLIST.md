@@ -19,7 +19,8 @@
 - [x] Run the disposable end-to-end demo after the final manual test pass
 - [x] Confirm one intentional safety conflict during the final demo
 - [ ] Windows packaging and CI evidence are deferred to later GitHub issues
-- [ ] Add a project license before presenting the repository as open-source
-- [ ] Configure Apple Developer ID signing and notarization secrets
+- [x] Add the MIT License for open-source use, modification, and redistribution
+- [x] Document the unsigned macOS installation warning and approval path
+- [ ] Optional: configure Apple Developer ID signing and notarization secrets later
 - [ ] Test the draft release on both Apple Silicon and Intel Macs
 - [ ] Maintainer signoff that `v0.1.0` is ready to publish

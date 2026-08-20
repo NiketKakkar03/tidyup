@@ -15,9 +15,9 @@ Pushing a tag such as `v0.1.0` runs `.github/workflows/release.yml`. It:
 
 The release stays in draft form so a maintainer can test both downloads and review the generated notes before publishing.
 
-## Required repository secrets
+## Optional repository secrets
 
-Configure these GitHub Actions secrets before producing an official public release:
+Configure these GitHub Actions secrets only if Apple signing and notarization are added later:
 
 - `APPLE_CERTIFICATE_P12`: base64-encoded Developer ID Application certificate
 - `APPLE_CERTIFICATE_PASSWORD`: password for the exported certificate
@@ -26,17 +26,19 @@ Configure these GitHub Actions secrets before producing an official public relea
 - `APPLE_TEAM_ID`: Apple Developer team identifier
 - `APPLE_APP_PASSWORD`: app-specific password used by `notarytool`
 
-Without these secrets, the workflow can create test archives, but those archives should not be promoted as the polished public macOS release.
+These secrets are optional. Without them, the workflow creates unsigned open-source archives and users may need to approve the binary through macOS Privacy & Security settings. Checksums and installation testing are still required before publication.
 
 ## Prepare and publish
 
-1. Choose and add a project license.
+1. Confirm the MIT license and copyright notice are current.
 2. Complete `RELEASE_CHECKLIST.md`.
 3. Confirm that `main` is clean and CI is passing.
 4. Create and push an annotated version tag.
 5. Download both draft-release archives on the corresponding Mac architectures.
 6. Verify checksums, install, run the disposable demo, undo it, and uninstall.
 7. Publish the draft GitHub Release only after both architecture checks pass.
+
+Apple signing and notarization can be added later without changing the MIT license or users' ability to build and modify the source.
 
 Example tag commands:
 

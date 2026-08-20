@@ -37,6 +37,15 @@ cd tidyup-macos-<type>
 
 The installer copies TidyUp to `~/.local/bin/tidyup`. If `~/.local/bin` is not already in your command path, it prints the exact line to add to `~/.zshrc`.
 
+The initial open-source release is not signed or notarized by Apple. The first launch may be blocked with a message that macOS cannot verify the developer. If that happens:
+
+1. Open **System Settings**.
+2. Select **Privacy & Security**.
+3. Find the message about TidyUp and choose **Open Anyway**.
+4. Confirm that you want to open it.
+
+Only approve a copy downloaded from this repository after its checksum reports `OK`.
+
 Open a new Terminal window, then verify the installation:
 
 ```bash
@@ -95,7 +104,7 @@ cargo build --release --locked -p tidyup-cli
 
 ## Release security
 
-Each archive has a SHA-256 checksum. Official public releases should also be signed and notarized with an Apple Developer ID; the release workflow supports this when the maintainer configures the documented GitHub secrets.
+Each archive has a SHA-256 checksum. The initial public release is intentionally unsigned and does not require an Apple Developer account. Signing and notarization remain optional future improvements; the release workflow already supports them when credentials are configured.
 
 ## Windows status
 

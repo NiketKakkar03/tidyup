@@ -99,6 +99,8 @@ cd tidyup-macos-<type>
 
 The installer puts `tidyup` in `~/.local/bin` and tells you if that folder needs to be added to your shell path. It does not need administrator access.
 
+The initial open-source downloads are not Apple-notarized. macOS may ask you to approve TidyUp in **System Settings > Privacy & Security** the first time you run it. Always download releases from this repository and verify the supplied checksum first.
+
 Then open a folder you want to organize and start with the read-only preview:
 
 ```bash
@@ -276,6 +278,10 @@ For the current MVP demo and showcase, use the macOS binary path above.
 ## In One Sentence
 
 TidyUp is a cautious folder-cleanup tool for people who want preview, audit history, and undo instead of risky one-shot file moves.
+
+## License
+
+TidyUp is open-source software released under the [MIT License](LICENSE). You may use, modify, and redistribute it under those terms.
 
 ## Additional Docs
 
