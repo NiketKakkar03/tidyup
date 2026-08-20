@@ -8,6 +8,13 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+license = "MIT"
+repository = "https://github.com/NiketKakkar03/tidyup"
+readme = "README.md"
+keywords = ["files", "organization", "cli", "productivity"]
+categories = ["command-line-utilities", "filesystem"]
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 

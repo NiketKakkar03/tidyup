@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -40,8 +40,7 @@ impl fmt::Display for StorageError {
         match self {
             Self::Io(error) => write!(f, "{error}"),
             Self::Utf8(error) => write!(f, "{error}"),
-            Self::SqliteCommandFailed(message) => write!(f, "{message}"),
-            Self::Parse(message) => write!(f, "{message}"),
+            Self::SqliteCommandFailed(message) | Self::Parse(message) => write!(f, "{message}"),
         }
     }
 }
@@ -60,10 +59,17 @@ impl From<std::string::FromUtf8Error> for StorageError {
     }
 }
 
+#[must_use]
 pub fn default_history_db_path(root: &Path) -> PathBuf {
     root.join(".tidyup").join("history.sqlite3")
 }
 
+/// Creates or upgrades the `SQLite` history database at `db_path`.
+///
+/// # Errors
+///
+/// Returns [`StorageError`] when the parent directory cannot be created or
+/// `SQLite` cannot initialize the schema.
 pub fn initialize_history_db(db_path: &Path) -> Result<(), StorageError> {
     if let Some(parent) = db_path.parent() {
         fs::create_dir_all(parent)?;
@@ -71,7 +77,7 @@ pub fn initialize_history_db(db_path: &Path) -> Result<(), StorageError> {
 
     run_sql(
         db_path,
-        r#"
+        r"
         PRAGMA journal_mode=WAL;
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version INTEGER PRIMARY KEY,
@@ -101,12 +107,18 @@ pub fn initialize_history_db(db_path: &Path) -> Result<(), StorageError> {
             PRIMARY KEY (operation_id, action_id),
             FOREIGN KEY (operation_id) REFERENCES operations(operation_id)
         );
-        "#,
+        ",
     )?;
 
     Ok(())
 }
 
+/// Persists a completed execution and all of its action results atomically.
+///
+/// # Errors
+///
+/// Returns [`StorageError`] when the history database cannot be initialized or
+/// `SQLite` cannot persist the operation.
 pub fn persist_execution(
     db_path: &Path,
     plan: &Plan,
@@ -115,7 +127,7 @@ pub fn persist_execution(
     initialize_history_db(db_path)?;
 
     let operation_sql = format!(
-        r#"
+        r"
         BEGIN IMMEDIATE;
         INSERT INTO operations(
             operation_id,
@@ -134,7 +146,7 @@ pub fn persist_execution(
             {skipped_count},
             {failed_count}
         );
-        "#,
+        ",
         operation_id = sql_escape(execution.operation_id.as_str()),
         plan_id = sql_escape(plan.plan_id.as_str()),
         root_path = sql_escape(&plan.root.to_string_lossy()),
@@ -158,8 +170,9 @@ pub fn persist_execution(
             ActionExecutionStatus::Failed { detail } => ("failed", None, Some(detail.clone())),
         };
 
-        sql.push_str(&format!(
-            r#"
+        write!(
+            &mut sql,
+            r"
             INSERT INTO action_results(
                 operation_id,
                 action_id,
@@ -177,7 +190,7 @@ pub fn persist_execution(
                 {reason_code},
                 {detail}
             );
-            "#,
+            ",
             operation_id = sql_escape(execution.operation_id.as_str()),
             action_id = sql_escape(result.action_id.as_str()),
             source_path = sql_escape(&result.source_relative_path.to_string_lossy()),
@@ -185,18 +198,25 @@ pub fn persist_execution(
             status_code = sql_escape(status_code),
             reason_code = sql_option_literal(reason_code.as_deref()),
             detail = sql_option_literal(detail.as_deref()),
-        ));
+        )
+        .expect("writing SQL to a String cannot fail");
     }
     sql.push_str("COMMIT;");
 
     run_sql(db_path, &sql)
 }
 
+/// Loads all recorded operations in reverse chronological order.
+///
+/// # Errors
+///
+/// Returns [`StorageError`] when `SQLite` cannot be queried or returned rows
+/// cannot be parsed.
 pub fn load_operations(db_path: &Path) -> Result<Vec<OperationRecord>, StorageError> {
     initialize_history_db(db_path)?;
     let output = query_sql(
         db_path,
-        r#"
+        r"
         SELECT
             operation_id,
             plan_id,
@@ -207,19 +227,25 @@ pub fn load_operations(db_path: &Path) -> Result<Vec<OperationRecord>, StorageEr
             failed_count
         FROM operations
         ORDER BY applied_at_unix_seconds DESC, operation_id DESC;
-        "#,
+        ",
     )?;
 
     parse_operations(&output)
 }
 
+/// Loads action-level results for `operation_id`.
+///
+/// # Errors
+///
+/// Returns [`StorageError`] when `SQLite` cannot be queried or returned rows
+/// cannot be parsed.
 pub fn load_action_results(
     db_path: &Path,
     operation_id: &str,
 ) -> Result<Vec<ActionResultRecord>, StorageError> {
     initialize_history_db(db_path)?;
     let sql = format!(
-        r#"
+        r"
         SELECT
             operation_id,
             action_id,
@@ -231,7 +257,7 @@ pub fn load_action_results(
         FROM action_results
         WHERE operation_id = '{operation_id}'
         ORDER BY action_id ASC;
-        "#,
+        ",
         operation_id = sql_escape(operation_id)
     );
     let output = query_sql(db_path, &sql)?;

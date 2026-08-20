@@ -2,6 +2,12 @@
 name = "tidyup-testkit"
 version = "0.1.0"
 edition = "2024"
+description = "Cross-platform filesystem fixtures for TidyUp tests"
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 path = "src/lib.rs"

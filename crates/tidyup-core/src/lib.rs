@@ -28,6 +28,12 @@ impl PlanId {
     }
 }
 
+impl Default for PlanId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct OperationId(String);
 
@@ -44,10 +50,17 @@ impl OperationId {
     }
 }
 
+impl Default for OperationId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ActionId(String);
 
 impl ActionId {
+    #[must_use]
     pub fn from_index(index: usize) -> Self {
         Self(format!("action-{index:04}"))
     }
@@ -68,6 +81,12 @@ pub struct FileSnapshot {
 }
 
 impl FileSnapshot {
+    /// Captures a file snapshot relative to `root`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScanError`] when `path` is outside `root`, its metadata cannot
+    /// be read, or its name is unsupported.
     pub fn from_root(root: &Path, path: &Path) -> Result<Self, ScanError> {
         let relative_path = path
             .strip_prefix(root)
@@ -90,7 +109,7 @@ impl FileSnapshot {
         let extension = path
             .extension()
             .and_then(std::ffi::OsStr::to_str)
-            .map(|value| value.to_ascii_lowercase());
+            .map(str::to_ascii_lowercase);
         let modified_unix_seconds = metadata
             .modified()
             .ok()
@@ -176,6 +195,12 @@ impl fmt::Display for ScanError {
 
 impl std::error::Error for ScanError {}
 
+/// Scans the direct children of `root` without modifying them.
+///
+/// # Errors
+///
+/// Returns [`ScanError`] when the selected root or one of its directory
+/// entries cannot be read.
 pub fn scan_root(root: &Path) -> Result<ScanReport, ScanError> {
     let mut scanned_files = Vec::new();
     let mut skipped_entries = Vec::new();
@@ -192,15 +217,12 @@ pub fn scan_root(root: &Path) -> Result<ScanReport, ScanError> {
         let relative_path = path
             .strip_prefix(root)
             .map_or_else(|_| path.clone(), Path::to_path_buf);
-        let metadata = match fs::symlink_metadata(&path) {
-            Ok(metadata) => metadata,
-            Err(_) => {
-                skipped_entries.push(SkippedEntry {
-                    relative_path,
-                    reason: ScanSkipReason::MetadataReadFailed,
-                });
-                continue;
-            }
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            skipped_entries.push(SkippedEntry {
+                relative_path,
+                reason: ScanSkipReason::MetadataReadFailed,
+            });
+            continue;
         };
         let file_type = metadata.file_type();
         if file_type.is_symlink() {
@@ -270,6 +292,12 @@ impl RulePackV1 {
         }
     }
 
+    /// Validates the rule-pack schema and rejects ambiguous extensions.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RulePackValidationError`] when the schema, pack identifier,
+    /// destination, or extension mappings are invalid.
     pub fn validate(&self) -> Result<(), RulePackValidationError> {
         if self.schema_version != RULE_PACK_SCHEMA_VERSION {
             return Err(RulePackValidationError::UnsupportedSchemaVersion(
@@ -410,6 +438,7 @@ pub struct Classification {
     pub reason: String,
 }
 
+#[must_use]
 pub fn classify_snapshot(snapshot: &FileSnapshot, pack: &RulePackV1) -> Option<Classification> {
     let extension = snapshot.extension.as_ref()?;
     for rule in &pack.rules {
@@ -471,6 +500,11 @@ impl PlanSkipReason {
     }
 }
 
+/// Builds a deterministic organization plan from a scan and rule pack.
+///
+/// # Errors
+///
+/// Returns [`RulePackValidationError`] when `pack` is invalid.
 pub fn build_plan(scan: &ScanReport, pack: &RulePackV1) -> Result<Plan, RulePackValidationError> {
     pack.validate()?;
 
@@ -585,6 +619,7 @@ impl ValidationReasonCode {
     }
 }
 
+#[must_use]
 pub fn validate_plan(root: &Path, plan: &Plan) -> ValidationReport {
     let mut valid_actions = Vec::new();
     let mut invalid_actions = Vec::new();
@@ -716,6 +751,7 @@ pub enum ActionExecutionStatus {
     },
 }
 
+#[must_use]
 pub fn execute_plan(root: &Path, plan: &Plan) -> ExecutionReport {
     let mut results = Vec::with_capacity(plan.moves.len());
 

@@ -2,6 +2,12 @@
 name = "tidyup-storage"
 version = "0.1.0"
 edition = "2024"
+description = "SQLite operation history storage for TidyUp"
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 path = "src/lib.rs"

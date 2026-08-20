@@ -35,6 +35,12 @@ impl fmt::Display for MoveError {
 
 impl std::error::Error for MoveError {}
 
+/// Moves a relative source path to a relative destination inside `root`.
+///
+/// # Errors
+///
+/// Returns [`MoveError`] when either path is unsafe, the source is missing,
+/// the destination is occupied, or the filesystem move fails.
 pub fn move_file_within_root(
     root: &Path,
     source_relative_path: &Path,
