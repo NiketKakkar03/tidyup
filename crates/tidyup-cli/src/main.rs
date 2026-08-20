@@ -449,9 +449,10 @@ fn render_scan_human(scan: &tidyup_core::ScanReport) -> String {
 
     if !scan.scanned_files.is_empty() {
         lines.push("Files TidyUp can consider:".to_owned());
-        for file in &scan.scanned_files {
+        for (index, file) in scan.scanned_files.iter().enumerate() {
             lines.push(format!(
-                "1. {} ({} bytes, {})",
+                "{}. {} ({} bytes, {})",
+                index + 1,
                 file.relative_path.display(),
                 file.size_bytes,
                 file.extension.as_deref().unwrap_or("no extension")

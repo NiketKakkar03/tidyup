@@ -34,7 +34,8 @@ fn scan_command_reports_supported_and_skipped_entries() {
 
     assert!(output.contains("TidyUp Scan"));
     assert!(output.contains("Files TidyUp can consider:"));
-    assert!(output.contains("Quarterly Notes.txt"));
+    assert!(output.contains("1. Quarterly Notes.txt"));
+    assert!(output.contains("2. todo.md"));
     assert!(output.contains("Empty Folder (directory)"));
     assert!(output.contains("Scan is read-only. No files were changed."));
 }
