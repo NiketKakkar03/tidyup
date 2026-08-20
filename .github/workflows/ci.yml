@@ -8,14 +8,9 @@ on:
 
 jobs:
   verify:
-    name: Verify (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
+    # Windows support is deferred until its path and SQLite acceptance work is complete.
+    name: Verify macOS
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
